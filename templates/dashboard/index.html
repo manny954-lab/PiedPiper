@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+{% from 'partials/_macros.html' import icon, badge, mov_badge, stock_badge, progreso, empty with context %}
+{% block title %}Panel{% endblock %}
+{% block page_title %}Panel operativo{% endblock %}
+{% block kicker %}Resumen general{% endblock %}
+
+{% block content %}
+{% if sin_empresa %}
+  <div class="card empty-hero">
+    <span class="empty-icon">{{ icon('building', 30) }}</span>
+    <h2>No hay empresas registradas</h2>
+    <p>Crea la primera empresa, su licencia y su usuario administrador para comenzar a operar el inventario.</p>
+    {% if g.user.rol == 'superadmin' %}
+    <a class="btn btn--primary" href="{{ url_for('empresas.nueva') }}">{{ icon('plus', 16) }} Crear empresa</a>
+    {% endif %}
+  </div>
+{% else %}
+<div class="page-head">
+  <div>
+    <h2>{{ g.empresa.nombre }}</h2>
+    <p>Estado del inventario al {{ hoy|fecha }}. Todo lo importante, en una sola vista.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn--ghost" href="{{ url_for('movimientos.nuevo') }}">{{ icon('movements', 16) }} Registrar movimiento</a>
+    {% if g.user.rol in ('admin', 'superadmin') %}
+    <a class="btn btn--primary" href="{{ url_for('productos.nuevo') }}">{{ icon('plus', 16) }} Nuevo producto</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="kpi-grid">
+  <article class="kpi kpi--accent">
+    <div class="kpi-head">
+      <span class="kpi-label">Productos activos</span>
+      <span class="kpi-icon">{{ icon('box', 19) }}</span>
+    </div>
+    <div class="kpi-value">{{ kpis.activos|numero }}</div>
+    <p class="kpi-sub">de {{ kpis.productos|numero }} registrados en el catálogo</p>
+  </article>
+
+  <article class="kpi">
+    <div class="kpi-head">
+      <span class="kpi-label">Unidades en stock</span>
+      <span class="kpi-icon">{{ icon('layers', 19) }}</span>
+    </div>
+    <div class="kpi-value">{{ kpis.unidades|numero }}</div>
+    <p class="kpi-sub">{{ kpis.bajos|numero }} productos requieren reposición</p>
+  </article>
+
+  <article class="kpi">
+    <div class="kpi-head">
+      <span class="kpi-label">Valor del inventario</span>
+      <span class="kpi-icon">{{ icon('wallet', 19) }}</span>
+    </div>
+    <div class="kpi-value kpi-value--money">{{ kpis.valor|money }}</div>
+    <p class="kpi-sub">valuado a costo de adquisición</p>
+  </article>
+
+  <article class="kpi kpi--alert">
+    <div class="kpi-head">
+      <span class="kpi-label">Alertas de stock</span>
+      <span class="kpi-icon">{{ icon('alert-triangle', 19) }}</span>
+    </div>
+    <div class="kpi-value">{{ kpis.bajos|numero }}</div>
+    <p class="kpi-sub">{{ kpis.agotados|numero }} agotados · {{ mov_hoy|numero }} movimientos hoy</p>
+  </article>
+</div>
+
+<div class="dashboard-grid">
+  <section class="card chart-card">
+    <div class="card-head">
+      <div>
+        <h3>Flujo de unidades</h3>
+        <p>Entradas y salidas de los últimos 7 días.</p>
+      </div>
+      <div class="chart-legend">
+        <span><i class="legend-dot legend-dot--in"></i> Entradas</span>
+        <span><i class="legend-dot legend-dot--out"></i> Salidas</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="chart">
+        <div class="chart-grid" aria-hidden="true">
+          <span></span><span></span><span></span><span></span>
+        </div>
+        <div class="chart-bars">
+          {% for d in serie %}
+          <div class="chart-col {{ 'is-today' if d.hoy }}" title="{{ d.etiqueta }}: {{ d.entradas }} entradas, {{ d.salidas }} salidas">
+            <div class="chart-col-bars">
+              <span class="chart-bar chart-bar--in {{ 'is-zero' if not d.entradas }}" style="--h: {{ d.h_entrada }}%"></span>
+              <span class="chart-bar chart-bar--out {{ 'is-zero' if not d.salidas }}" style="--h: {{ d.h_salida }}%"></span>
+            </div>
+            <span class="chart-label">{{ d.etiqueta }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h3>Inventario por categoría</h3>
+        <p>Unidades disponibles.</p>
+      </div>
+      <a class="card-link" href="{{ url_for('categorias.index') }}">Ver todas {{ icon('arrow-up-right', 14) }}</a>
+    </div>
+    <div class="card-body">
+      {% if categorias %}
+      <ul class="cat-list">
+        {% for c in categorias %}
+        <li>
+          <div class="cat-row">
+            <span class="cat-name">{{ c.nombre }}</span>
+            <span class="cat-value">{{ c.unidades|numero }} <small>u.</small></span>
+          </div>
+          <div class="cat-bar"><span style="width: {{ c.ancho }}%"></span></div>
+          <span class="cat-meta">{{ c.productos }} producto{{ '' if c.productos == 1 else 's' }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="muted center">Aún no hay productos activos con categoría.</p>
+      {% endif %}
+    </div>
+  </section>
+</div>
+
+<div class="dashboard-grid dashboard-grid--bottom">
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h3>Movimientos recientes</h3>
+        <p>Últimos registros del inventario.</p>
+      </div>
+      <a class="card-link" href="{{ url_for('movimientos.index') }}">Historial completo {{ icon('arrow-right', 14) }}</a>
+    </div>
+    {% if recientes %}
+    <div class="table-wrap">
+      <table class="table table--compact">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Producto</th>
+            <th>Tipo</th>
+            <th class="num">Cantidad</th>
+            <th class="num">Stock final</th>
+            <th>Usuario</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in recientes %}
+          <tr>
+            <td class="nowrap muted">{{ m.creado_en|fecha_hora }}</td>
+            <td>
+              <div class="cell-main">{{ m.producto }}</div>
+              <div class="cell-sub">{{ m.sku }}</div>
+            </td>
+            <td>{{ mov_badge(m.tipo) }}</td>
+            <td class="num mono">
+              {% if m.tipo == 'salida' %}<span class="text-warning">−{{ m.cantidad }}</span>
+              {% elif m.tipo == 'entrada' %}<span class="text-success">+{{ m.cantidad }}</span>
+              {% else %}<span class="text-info">→ {{ m.stock_resultante }}</span>{% endif %}
+            </td>
+            <td class="num mono">{{ m.stock_resultante }}</td>
+            <td class="muted">{{ m.usuario }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      {{ empty('movements', 'Sin movimientos', 'Registra la primera entrada o salida para empezar el historial.', url_for('movimientos.nuevo'), 'Registrar movimiento') }}
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h3>Reposición sugerida</h3>
+        <p>Productos en o bajo el mínimo.</p>
+      </div>
+      <span class="badge badge--warning">{{ bajos|length }}</span>
+    </div>
+    <div class="card-body card-body--flush">
+      {% if bajos %}
+      <ul class="low-list">
+        {% for p in bajos %}
+        <li>
+          <div class="low-info">
+            <div class="cell-main">{{ p.nombre }}</div>
+            <div class="cell-sub">{{ p.sku }} · {{ p.categoria }}</div>
+          </div>
+          <div class="low-stock">
+            <span class="mono {{ 'text-danger' if p.stock == 0 else 'text-warning' }}">{{ p.stock }} {{ p.unidad }}</span>
+            <div class="mini-bar"><span class="{{ 'is-danger' if p.stock == 0 else '' }}" style="width: {{ p.llenado }}%"></span></div>
+            <small>mín. {{ p.stock_minimo }}</small>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      <div class="card-foot">
+        <a class="btn btn--ghost btn--sm btn--block" href="{{ url_for('productos.index', estado='bajo') }}">
+          Revisar todos los productos {{ icon('arrow-right', 14) }}
+        </a>
+      </div>
+      {% else %}
+      <div class="mini-empty">
+        {{ icon('check-circle', 24) }}
+        <p>Todo el inventario está por encima del mínimo configurado.</p>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% endif %}
+{% endblock %}

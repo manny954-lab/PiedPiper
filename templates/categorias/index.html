@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% from 'partials/_macros.html' import icon, csrf_field, badge, estado_badge, empty with context %}
+{% block title %}Categorías{% endblock %}
+{% block page_title %}Categorías{% endblock %}
+{% block kicker %}Inventario{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Organización del catálogo</h2>
+    <p>Agrupa productos para analizar el inventario y encontrar todo más rápido.</p>
+  </div>
+  {% if g.user.rol in ('admin', 'superadmin') %}
+  <a class="btn btn--primary" href="{{ url_for('categorias.nueva') }}">{{ icon('plus', 16) }} Nueva categoría</a>
+  {% endif %}
+</div>
+
+<div class="stats-row">
+  <div class="stat-chip"><span class="stat-icon">{{ icon('tag', 16) }}</span><div><strong>{{ resumen.total }}</strong><span>categorías</span></div></div>
+  <div class="stat-chip"><span class="stat-icon">{{ icon('check-circle', 16) }}</span><div><strong>{{ resumen.activas }}</strong><span>activas</span></div></div>
+  <div class="stat-chip"><span class="stat-icon">{{ icon('box', 16) }}</span><div><strong>{{ resumen.productos|numero }}</strong><span>productos vinculados</span></div></div>
+  <div class="stat-chip"><span class="stat-icon">{{ icon('layers', 16) }}</span><div><strong>{{ resumen.unidades|numero }}</strong><span>unidades en total</span></div></div>
+</div>
+
+{% if categorias %}
+<div class="category-grid">
+  {% for c in categorias %}
+  <article class="category-card {{ 'is-inactive' if not c.activo }}">
+    <div class="category-top">
+      <span class="category-icon">{{ icon('tag', 18) }}</span>
+      <div class="category-actions">
+        {% if g.user.rol in ('admin', 'superadmin') %}
+        <a class="icon-btn icon-btn--sm" href="{{ url_for('categorias.editar', categoria_id=c.id) }}" title="Editar categoría" aria-label="Editar {{ c.nombre }}">{{ icon('edit', 15) }}</a>
+        <form method="post" action="{{ url_for('categorias.eliminar', categoria_id=c.id) }}">
+          {{ csrf_field() }}
+          <button class="icon-btn icon-btn--sm is-danger" type="submit" title="Eliminar categoría" aria-label="Eliminar {{ c.nombre }}"
+                  data-confirm="¿Eliminar la categoría «{{ c.nombre }}»? Solo es posible si no tiene productos asociados.">{{ icon('trash', 15) }}</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    <h3>{{ c.nombre }}</h3>
+    <p>{{ c.descripcion or 'Sin descripción registrada.' }}</p>
+    <div class="category-stats">
+      <div><strong>{{ c.productos|numero }}</strong><span>productos</span></div>
+      <div><strong>{{ c.unidades|numero }}</strong><span>unidades</span></div>
+      <div class="category-state">{{ estado_badge(c.activo) }}</div>
+    </div>
+  </article>
+  {% endfor %}
+  {% if g.user.rol in ('admin', 'superadmin') %}
+  <a class="category-card category-card--new" href="{{ url_for('categorias.nueva') }}">
+    <span class="new-icon">{{ icon('plus', 22) }}</span>
+    <strong>Nueva categoría</strong>
+    <span>Agrega una nueva agrupación al catálogo</span>
+  </a>
+  {% endif %}
+</div>
+{% else %}
+  {{ empty('tag', 'Aún no hay categorías', 'Crea categorías para organizar tus productos y ver su distribución en el panel.', url_for('categorias.nueva') if g.user.rol in ('admin', 'superadmin') else None, 'Nueva categoría') }}
+{% endif %}
+{% endblock %}

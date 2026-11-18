@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+{% from 'partials/_macros.html' import icon, csrf_field, error, badge, stock_badge with context %}
+{% block title %}{{ 'Editar producto' if modo == 'editar' else 'Nuevo producto' }}{% endblock %}
+{% block page_title %}{{ 'Editar producto' if modo == 'editar' else 'Nuevo producto' }}{% endblock %}
+{% block kicker %}Inventario · Productos{% endblock %}
+
+{% block content %}
+<nav class="breadcrumb" aria-label="Ruta">
+  <a href="{{ url_for('productos.index') }}">Productos</a>
+  {{ icon('chevron-right', 13) }}
+  <span>{{ producto.nombre if producto else 'Nuevo registro' }}</span>
+</nav>
+
+<div class="page-head">
+  <div>
+    <h2>{{ 'Actualizar ficha del producto' if modo == 'editar' else 'Registrar un producto' }}</h2>
+    <p>{{ 'Los cambios de stock se realizan únicamente mediante movimientos.' if modo == 'editar' else 'Completa la ficha; si indicas stock inicial se registrará una entrada de carga inicial.' }}</p>
+  </div>
+  <a class="btn btn--ghost" href="{{ url_for('productos.index') }}">{{ icon('chevron-left', 15) }} Volver al catálogo</a>
+</div>
+
+<form method="post" action="{{ url_for('productos.editar', producto_id=producto.id) if producto else url_for('productos.nuevo') }}" class="entity-form" novalidate>
+  {{ csrf_field() }}
+  <div class="form-layout">
+    <div class="form-main">
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h3>Identificación</h3>
+            <p>Datos que verás en el catálogo y en los movimientos.</p>
+          </div>
+          <span class="step-index">01</span>
+        </div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="field span-2">
+              <label for="nombre">Nombre del producto <span class="req">*</span></label>
+              <input type="text" id="nombre" name="nombre" value="{{ datos.nombre }}" maxlength="140" required placeholder="Ej. Monitor Dell P2422H 24&quot;" class="{{ 'is-invalid' if errores.nombre }}">
+              {{ error(errores, 'nombre') }}
+            </div>
+            <div class="field">
+              <label for="sku">SKU / código <span class="req">*</span></label>
+              <input type="text" id="sku" name="sku" value="{{ datos.sku }}" maxlength="40" required placeholder="Ej. MON-002" class="mono-input {{ 'is-invalid' if errores.sku }}">
+              <p class="field-help">Único dentro de la empresa. Se guarda en mayúsculas.</p>
+              {{ error(errores, 'sku') }}
+            </div>
+            <div class="field">
+              <label for="categoria_id">Categoría</label>
+              <div class="select-wrap">
+                <select id="categoria_id" name="categoria_id" class="{{ 'is-invalid' if errores.categoria_id }}">
+                  <option value="">Sin categoría</option>
+                  {% for c in categorias %}
+                  <option value="{{ c.id }}" {{ 'selected' if datos.categoria_id|string == c.id|string }}>{{ c.nombre }}{% if not c.activo %} (inactiva){% endif %}</option>
+                  {% endfor %}
+                </select>
+                {{ icon('chevron-down', 14, 'select-caret') }}
+              </div>
+              {{ error(errores, 'categoria_id') }}
+            </div>
+            <div class="field">
+              <label for="unidad">Unidad de medida</label>
+              <input type="text" id="unidad" name="unidad" value="{{ datos.unidad }}" maxlength="20" placeholder="pza, caja, kg…" class="{{ 'is-invalid' if errores.unidad }}">
+              {{ error(errores, 'unidad') }}
+            </div>
+            <div class="field">
+              <label for="ubicacion">Ubicación</label>
+              <input type="text" id="ubicacion" name="ubicacion" value="{{ datos.ubicacion }}" maxlength="60" placeholder="Ej. A-03, almacén norte…">
+              <p class="field-help">Referencia física opcional.</p>
+            </div>
+            <div class="field span-2">
+              <label for="descripcion">Descripción</label>
+              <textarea id="descripcion" name="descripcion" rows="3" maxlength="300" placeholder="Detalles, marca, presentación o notas de compra…">{{ datos.descripcion }}</textarea>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h3>Inventario y precios</h3>
+            <p>Valores usados para costeo y alertas de reposición.</p>
+          </div>
+          <span class="step-index">02</span>
+        </div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="field">
+              <label for="stock">Stock inicial</label>
+              {% if modo == 'editar' %}
+              <div class="readonly-stock">
+                <strong class="mono">{{ producto.stock|numero }}</strong>
+                <span>{{ producto.unidad }} disponibles</span>
+                <a href="{{ url_for('movimientos.nuevo', producto=producto.id) }}">Registrar movimiento {{ icon('arrow-right', 13) }}</a>
+              </div>
+              <p class="field-help">El stock se modifica solo con movimientos para conservar la auditoría.</p>
+              {% else %}
+              <input type="number" id="stock" name="stock" value="{{ datos.stock }}" min="0" step="1" class="{{ 'is-invalid' if errores.stock }}">
+              <p class="field-help">Se creará un movimiento de carga inicial si es mayor a cero.</p>
+              {{ error(errores, 'stock') }}
+              {% endif %}
+            </div>
+            <div class="field">
+              <label for="stock_minimo">Stock mínimo</label>
+              <input type="number" id="stock_minimo" name="stock_minimo" value="{{ datos.stock_minimo }}" min="0" step="1" class="{{ 'is-invalid' if errores.stock_minimo }}">
+              <p class="field-help">Genera una alerta cuando el stock llegue a este valor.</p>
+              {{ error(errores, 'stock_minimo') }}
+            </div>
+            <div class="field">
+              <label for="precio_compra">Precio de compra</label>
+              <div class="input-prefix">
+                <span>$</span>
+                <input type="number" id="precio_compra" name="precio_compra" value="{{ datos.precio_compra }}" min="0" step="0.01" class="mono-input {{ 'is-invalid' if errores.precio_compra }}">
+              </div>
+              <p class="field-help">Costo unitario de adquisición.</p>
+              {{ error(errores, 'precio_compra') }}
+            </div>
+            <div class="field">
+              <label for="precio_venta">Precio de venta</label>
+              <div class="input-prefix">
+                <span>$</span>
+                <input type="number" id="precio_venta" name="precio_venta" value="{{ datos.precio_venta }}" min="0" step="0.01" class="mono-input {{ 'is-invalid' if errores.precio_venta }}">
+              </div>
+              <p class="field-help">Precio público sugerido.</p>
+              {{ error(errores, 'precio_venta') }}
+            </div>
+          </div>
+
+          <div class="status-row">
+            <label class="switch">
+              <input type="checkbox" name="activo" value="1" {{ 'checked' if datos.activo }}>
+              <span class="switch-track" aria-hidden="true"></span>
+              <span class="switch-copy">
+                <strong>Producto activo</strong>
+                <small>Si se desactiva, no podrá usarse en nuevos movimientos.</small>
+              </span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <div class="form-footer">
+        <a class="btn btn--ghost" href="{{ url_for('productos.index') }}">Cancelar</a>
+        <button class="btn btn--primary" type="submit">
+          {{ icon('check', 16) }} {{ 'Guardar cambios' if modo == 'editar' else 'Crear producto' }}
+        </button>
+      </div>
+    </div>
+
+    <aside class="form-side">
+      {% if producto %}
+      <section class="card side-card">
+        <div class="side-card-head">
+          <span class="side-icon">{{ icon('box', 18) }}</span>
+          <h3>Ficha actual</h3>
+        </div>
+        <div class="side-stats">
+          <div><span>Stock</span><strong class="mono">{{ producto.stock|numero }} {{ producto.unidad }}</strong></div>
+          <div><span>Mínimo</span><strong class="mono">{{ producto.stock_minimo|numero }}</strong></div>
+          <div><span>Costo</span><strong class="mono">{{ producto.precio_compra|money }}</strong></div>
+          <div><span>Venta</span><strong class="mono">{{ producto.precio_venta|money }}</strong></div>
+          <div class="span-2"><span>Valor en stock</span><strong class="mono">{{ (producto.stock * producto.precio_compra)|money }}</strong></div>
+        </div>
+        <div class="side-status">{{ stock_badge(producto.stock, producto.stock_minimo, producto.activo) }}</div>
+        <p class="side-meta">Última actualización: {{ producto.actualizado_en|fecha_hora }}</p>
+      </section>
+      {% else %}
+      <section class="card side-card side-card--accent">
+        <div class="side-card-head">
+          <span class="side-icon">{{ icon('info', 18) }}</span>
+          <h3>Antes de guardar</h3>
+        </div>
+        <ul class="tip-list">
+          <li>{{ icon('check', 14) }} Usa un SKU corto y consistente.</li>
+          <li>{{ icon('check', 14) }} Define el stock mínimo para activar alertas.</li>
+          <li>{{ icon('check', 14) }} El stock inicial genera un movimiento auditado.</li>
+          <li>{{ icon('check', 14) }} Podrás editar precios cuando quieras.</li>
+        </ul>
+      </section>
+      {% endif %}
+
+      <section class="card side-card">
+        <div class="side-card-head">
+          <span class="side-icon">{{ icon('shield', 18) }}</span>
+          <h3>Buenas prácticas</h3>
+        </div>
+        <p class="side-text">Mantén los precios actualizados y revisa semanalmente los productos con alerta para evitar quiebres de stock.</p>
+        <a class="side-link" href="{{ url_for('categorias.index') }}">Gestionar categorías {{ icon('arrow-right', 13) }}</a>
+      </section>
+    </aside>
+  </div>
+</form>
+{% endblock %}

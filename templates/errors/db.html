@@ -1,0 +1,31 @@
+{% extends 'auth_base.html' %}
+{% from 'partials/_macros.html' import icon, badge with context %}
+{% block title %}Sin conexión a la base de datos{% endblock %}
+
+{% block auth_content %}
+<div class="auth-card error-card">
+  <span class="error-code">503</span>
+  <span class="error-icon">{{ icon('database', 28) }}</span>
+  <p class="eyebrow">Servicio no disponible</p>
+  <h1>No hay conexión con MariaDB</h1>
+  <p class="auth-subtitle">La aplicación está en línea, pero no pudo comunicarse con la base de datos. Revisa el servicio y la configuración.</p>
+
+  <div class="db-checklist">
+    <div><span class="db-step">01</span><div><strong>Verifica MariaDB</strong><code>sudo systemctl status mariadb</code></div></div>
+    <div><span class="db-step">02</span><div><strong>Revisa las credenciales</strong><code>DB_HOST · DB_USER · DB_PASSWORD · DB_NAME</code></div></div>
+    <div><span class="db-step">03</span><div><strong>Inicializa la base</strong><code>python seed.py</code></div></div>
+  </div>
+
+  {% if detalle %}
+  <details class="db-detail">
+    <summary>Detalle técnico</summary>
+    <pre>{{ detalle }}</pre>
+  </details>
+  {% endif %}
+
+  <div class="error-actions">
+    <a class="btn btn--primary" href="{{ url_for('auth.login') }}">Reintentar</a>
+    <a class="btn btn--ghost" href="mailto:{{ soporte_email }}">Soporte</a>
+  </div>
+</div>
+{% endblock %}

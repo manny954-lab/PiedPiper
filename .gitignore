@@ -1,0 +1,15 @@
+# Entorno
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.env
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Logs y temporales
+*.log
+*.pid
+*.bak

@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% from 'partials/_macros.html' import icon, csrf_field, error, badge, licencia_badge, progreso with context %}
+{% block title %}Editar licencia{% endblock %}
+{% block page_title %}Licencia{% endblock %}
+{% block kicker %}Plataforma · Suscripciones{% endblock %}
+
+{% block content %}
+<nav class="breadcrumb" aria-label="Ruta">
+  <a href="{{ url_for('licencias.index') }}">Licencias</a>
+  {{ icon('chevron-right', 13) }}
+  <span>{{ licencia.empresa }}</span>
+</nav>
+
+<div class="page-head">
+  <div>
+    <h2>{{ licencia.empresa }}</h2>
+    <p>Clave <span class="mono">{{ licencia.clave }}</span> · ajusta el plan, la vigencia y los límites contratados.</p>
+  </div>
+  <a class="btn btn--ghost" href="{{ url_for('licencias.index') }}">{{ icon('chevron-left', 15) }} Volver</a>
+</div>
+
+<form method="post" action="{{ url_for('licencias.editar', licencia_id=licencia.id) }}" class="entity-form" novalidate>
+  {{ csrf_field() }}
+  <div class="form-layout">
+    <div class="form-main">
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h3>Condiciones de la licencia</h3>
+            <p>Los cambios aplican de inmediato al acceso de la empresa.</p>
+          </div>
+          <span class="step-index">01</span>
+        </div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="field">
+              <label for="plan">Plan</label>
+              <div class="select-wrap">
+                <select id="plan" name="plan" class="{{ 'is-invalid' if errores.plan }}">
+                  {% for clave, p in planes.items() %}
+                  <option value="{{ clave }}" {{ 'selected' if datos.plan == clave }}>{{ p.nombre }} · {{ p.precio }}</option>
+                  {% endfor %}
+                </select>
+                {{ icon('chevron-down', 14, 'select-caret') }}
+              </div>
+              {{ error(errores, 'plan') }}
+            </div>
+            <div class="field">
+              <label for="estado">Estado</label>
+              <div class="select-wrap">
+                <select id="estado" name="estado" class="{{ 'is-invalid' if errores.estado }}">
+                  {% for e in estados %}
+                  <option value="{{ e }}" {{ 'selected' if datos.estado == e }}>{{ e|capitalize }}</option>
+                  {% endfor %}
+                </select>
+                {{ icon('chevron-down', 14, 'select-caret') }}
+              </div>
+              {{ error(errores, 'estado') }}
+            </div>
+            <div class="field">
+              <label for="inicio">Inicio</label>
+              <input type="date" id="inicio" name="inicio" value="{{ datos.inicio }}" required class="{{ 'is-invalid' if errores.inicio }}">
+              {{ error(errores, 'inicio') }}
+            </div>
+            <div class="field">
+              <label for="vence">Vencimiento</label>
+              <input type="date" id="vence" name="vence" value="{{ datos.vence }}" required class="{{ 'is-invalid' if errores.vence }}">
+              {{ error(errores, 'vence') }}
+            </div>
+            <div class="field">
+              <label for="max_usuarios">Máximo de usuarios</label>
+              <input type="number" id="max_usuarios" name="max_usuarios" value="{{ datos.max_usuarios }}" min="1" step="1" class="{{ 'is-invalid' if errores.max_usuarios }}">
+              <p class="field-help">Actualmente {{ licencia.usuarios }} activos.</p>
+              {{ error(errores, 'max_usuarios') }}
+            </div>
+            <div class="field">
+              <label for="max_productos">Máximo de productos</label>
+              <input type="number" id="max_productos" name="max_productos" value="{{ datos.max_productos }}" min="1" step="1" class="{{ 'is-invalid' if errores.max_productos }}">
+              <p class="field-help">Actualmente {{ licencia.productos }} registrados.</p>
+              {{ error(errores, 'max_productos') }}
+            </div>
+            <div class="field span-2">
+              <label for="notas">Notas internas</label>
+              <textarea id="notas" name="notas" rows="3" maxlength="255" placeholder="Contacto de renovación, condiciones especiales…">{{ datos.notas }}</textarea>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="form-footer">
+        <a class="btn btn--ghost" href="{{ url_for('licencias.index') }}">Cancelar</a>
+        <button class="btn btn--primary" type="submit">{{ icon('check', 16) }} Guardar licencia</button>
+      </div>
+    </div>
+
+    <aside class="form-side">
+      <section class="card side-card">
+        <div class="side-card-head">
+          <span class="side-icon">{{ icon('activity', 18) }}</span>
+          <h3>Estado actual</h3>
+        </div>
+        <div class="license-status-row">
+          {{ licencia_badge(licencia.estado, dias) }}
+          <span class="{{ 'text-danger' if dias < 0 else ('text-warning' if dias <= 30 else 'muted') }}">{{ dias }} días</span>
+        </div>
+        <div class="side-stats">
+          <div class="span-2"><span>Vence</span><strong>{{ licencia.vence|fecha }}</strong></div>
+          <div class="span-2">
+            <span>Usuarios</span>
+            <strong class="mono">{{ licencia.usuarios }} / {{ licencia.max_usuarios }}</strong>
+            {{ progreso(licencia.usuarios, licencia.max_usuarios, 'danger' if licencia.usuarios >= licencia.max_usuarios else 'accent') }}
+          </div>
+          <div class="span-2">
+            <span>Productos</span>
+            <strong class="mono">{{ licencia.productos }} / {{ licencia.max_productos }}</strong>
+            {{ progreso(licencia.productos, licencia.max_productos, 'danger' if licencia.productos >= licencia.max_productos else 'accent') }}
+          </div>
+        </div>
+      </section>
+
+      <section class="card side-card side-card--accent">
+        <div class="side-card-head">
+          <span class="side-icon">{{ icon('refresh', 18) }}</span>
+          <h3>Renovación rápida</h3>
+        </div>
+        <p class="side-text">Suma 12 meses desde la fecha de vencimiento actual (o desde hoy si ya venció) y reactiva la licencia.</p>
+        <form method="post" action="{{ url_for('licencias.renovar', licencia_id=licencia.id) }}">
+          {{ csrf_field() }}
+          <button class="btn btn--primary btn--sm btn--block" type="submit" data-confirm="¿Renovar la licencia 12 meses y activarla?">{{ icon('refresh', 15) }} Renovar 12 meses</button>
+        </form>
+      </section>
+
+      <section class="card side-card">
+        <div class="side-card-head">
+          <span class="side-icon">{{ icon('building', 18) }}</span>
+          <h3>Empresa</h3>
+        </div>
+        <a class="side-link" href="{{ url_for('empresas.editar', empresa_id=licencia.empresa_id) }}">Editar datos de la empresa {{ icon('arrow-right', 13) }}</a>
+      </section>
+    </aside>
+  </div>
+</form>
+{% endblock %}

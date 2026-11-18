@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+{% from 'partials/_macros.html' import icon, csrf_field, error, avatar, badge with context %}
+{% block title %}{{ 'Editar usuario' if modo == 'editar' else 'Nuevo usuario' }}{% endblock %}
+{% block page_title %}{{ 'Editar usuario' if modo == 'editar' else 'Nuevo usuario' }}{% endblock %}
+{% block kicker %}Administración · Usuarios{% endblock %}
+
+{% block content %}
+<nav class="breadcrumb" aria-label="Ruta">
+  <a href="{{ url_for('usuarios.index') }}">Usuarios</a>
+  {{ icon('chevron-right', 13) }}
+  <span>{{ usuario.nombre if usuario else 'Nuevo registro' }}</span>
+</nav>
+
+<div class="page-head">
+  <div>
+    <h2>{{ 'Actualizar la cuenta' if modo == 'editar' else 'Invitar a un colaborador' }}</h2>
+    <p>{{ 'Modifica datos, rol o contraseña del usuario.' if modo == 'editar' else 'Crea una cuenta con acceso al inventario de esta empresa.' }}</p>
+  </div>
+  <a class="btn btn--ghost" href="{{ url_for('usuarios.index') }}">{{ icon('chevron-left', 15) }} Volver</a>
+</div>
+
+<form method="post" action="{{ url_for('usuarios.editar', usuario_id=usuario.id) if usuario else url_for('usuarios.nuevo') }}" class="entity-form" novalidate>
+  {{ csrf_field() }}
+  <div class="form-layout">
+    <div class="form-main">
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h3>Datos de acceso</h3>
+            <p>La cuenta pertenece siempre a {{ g.empresa.nombre }}.</p>
+          </div>
+          <span class="step-index">01</span>
+        </div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="field">
+              <label for="nombre">Nombre completo <span class="req">*</span></label>
+              <input type="text" id="nombre" name="nombre" value="{{ datos.nombre }}" maxlength="120" required placeholder="Ej. Mariana Ortega" class="{{ 'is-invalid' if errores.nombre }}">
+              {{ error(errores, 'nombre') }}
+            </div>
+            <div class="field">
+              <label for="email">Correo corporativo <span class="req">*</span></label>
+              <input type="email" id="email" name="email" value="{{ datos.email }}" maxlength="160" required placeholder="nombre@empresa.com" class="{{ 'is-invalid' if errores.email }}">
+              <p class="field-help">Será su usuario para iniciar sesión.</p>
+              {{ error(errores, 'email') }}
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Rol dentro de la empresa</label>
+            <div class="role-grid">
+              <label class="role-option">
+                <input type="radio" name="rol" value="admin" {{ 'checked' if datos.rol == 'admin' }}>
+                <span class="role-card">
+                  <span class="role-icon">{{ icon('shield', 18) }}</span>
+                  <span>
+                    <strong>Administrador</strong>
+                    <small>Catálogo, usuarios, movimientos y licencia.</small>
+                  </span>
+                </span>
+              </label>
+              <label class="role-option">
+                <input type="radio" name="rol" value="operador" {{ 'checked' if datos.rol == 'operador' }}>
+                <span class="role-card">
+                  <span class="role-icon">{{ icon('user', 18) }}</span>
+                  <span>
+                    <strong>Operador</strong>
+                    <small>Consulta el inventario y registra movimientos.</small>
+                  </span>
+                </span>
+              </label>
+            </div>
+            {{ error(errores, 'rol') }}
+          </div>
+
+          <div class="status-row">
+            <label class="switch">
+              <input type="checkbox" name="activo" value="1" {{ 'checked' if datos.activo }}>
+              <span class="switch-track" aria-hidden="true"></span>
+              <span class="switch-copy">
+                <strong>Cuenta activa</strong>
+                <small>Si se desactiva, el usuario no podrá iniciar sesión.</small>
+              </span>
+            </label>
+            {{ error(errores, 'activo') }}
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h3>{{ 'Restablecer contraseña' if modo == 'editar' else 'Contraseña inicial' }}</h3>
+            <p>{{ 'Déjala vacía para conservar la contraseña actual.' if modo == 'editar' else 'Mínimo 8 caracteres, con letras y números.' }}</p>
+          </div>
+          <span class="step-index">02</span>
+        </div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="field">
+              <label for="password">{{ 'Nueva contraseña' if modo == 'editar' else 'Contraseña' }}{% if modo == 'nuevo' %} <span class="req">*</span>{% endif %}</label>
+              <div class="input-icon input-icon--action">
+                {{ icon('lock', 16) }}
+                <input type="password" id="password" name="password" autocomplete="new-password" minlength="8" {{ 'required' if modo == 'nuevo' }} class="{{ 'is-invalid' if errores.password }}">
+                <button class="input-action" type="button" data-password-toggle="password" aria-label="Mostrar contraseña">
+                  <span data-eye-on>{{ icon('eye', 16) }}</span>
+                  <span data-eye-off class="is-hidden">{{ icon('eye-off', 16) }}</span>
+                </button>
+              </div>
+              {{ error(errores, 'password') }}
+            </div>
+            <div class="field">
+              <label for="password_confirmar">Confirmar contraseña</label>
+              <input type="password" id="password_confirmar" name="password_confirmar" autocomplete="new-password" {{ 'required' if modo == 'nuevo' }} class="{{ 'is-invalid' if errores.password_confirmar }}">
+              {{ error(errores, 'password_confirmar') }}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="form-footer">
+        <a class="btn btn--ghost" href="{{ url_for('usuarios.index') }}">Cancelar</a>
+        <button class="btn btn--primary" type="submit">{{ icon('check', 16) }} {{ 'Guardar cambios' if modo == 'editar' else 'Crear usuario' }}</button>
+      </div>
+    </div>
+
+    <aside class="form-side">
+      {% if usuario %}
+      <section class="card side-card">
+        <div class="side-card-head">
+          <span class="side-icon">{{ icon('user', 18) }}</span>
+          <h3>Cuenta actual</h3>
+        </div>
+        <div class="side-profile">
+          {{ avatar(usuario.nombre, 'avatar--lg') }}
+          <strong>{{ usuario.nombre }}</strong>
+          <span>{{ usuario.email }}</span>
+          {% if usuario.activo %}{{ badge('Activa', 'success') }}{% else %}{{ badge('Inactiva', 'neutral') }}{% endif %}
+        </div>
+        <div class="side-stats">
+          <div><span>Rol</span><strong>{{ ROLES.get(usuario.rol, usuario.rol) }}</strong></div>
+          <div><span>Último acceso</span><strong>{{ usuario.ultimo_acceso|fecha if usuario.ultimo_acceso else 'Nunca' }}</strong></div>
+          <div class="span-2"><span>Cuenta creada</span><strong>{{ usuario.creado_en|fecha_hora }}</strong></div>
+        </div>
+        {% if usuario.id == g.user.id %}
+        <p class="side-meta">Estás editando tu propia cuenta. No puedes quitarte el rol de administrador.</p>
+        {% endif %}
+      </section>
+      {% else %}
+      <section class="card side-card side-card--accent">
+        <div class="side-card-head">
+          <span class="side-icon">{{ icon('shield', 18) }}</span>
+          <h3>Permisos</h3>
+        </div>
+        <ul class="tip-list">
+          <li>{{ icon('check', 14) }} Los usuarios solo ven datos de su empresa.</li>
+          <li>{{ icon('check', 14) }} Las contraseñas se almacenan cifradas.</li>
+          <li>{{ icon('check', 14) }} Puedes desactivar cuentas en cualquier momento.</li>
+          <li>{{ icon('check', 14) }} El límite depende de la licencia vigente.</li>
+        </ul>
+      </section>
+      {% endif %}
+
+      <section class="card side-card">
+        <div class="side-card-head">
+          <span class="side-icon">{{ icon('users', 18) }}</span>
+          <h3>Licencia actual</h3>
+        </div>
+        {% if g.licencia %}
+        <p class="side-text">{{ PLANES[g.licencia.plan].nombre if g.licencia.plan in PLANES else g.licencia.plan }} · {{ g.licencia.usuarios_usados }} de {{ g.licencia.max_usuarios }} usuarios activos.</p>
+        <a class="side-link" href="{{ url_for('licencias.mi_licencia') if g.user.rol != 'superadmin' else url_for('licencias.editar', licencia_id=g.licencia.id) }}">Ver licencia {{ icon('arrow-right', 13) }}</a>
+        {% else %}
+        <p class="side-text">Sin licencia registrada.</p>
+        {% endif %}
+      </section>
+    </aside>
+  </div>
+</form>
+{% endblock %}

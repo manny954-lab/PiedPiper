@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+{% from 'partials/_macros.html' import icon, csrf_field, error, badge, licencia_badge, progreso with context %}
+{% block title %}{{ 'Editar empresa' if modo == 'editar' else 'Nueva empresa' }}{% endblock %}
+{% block page_title %}{{ 'Editar empresa' if modo == 'editar' else 'Nueva empresa' }}{% endblock %}
+{% block kicker %}Plataforma · Empresas{% endblock %}
+
+{% block content %}
+<nav class="breadcrumb" aria-label="Ruta">
+  <a href="{{ url_for('empresas.index') }}">Empresas</a>
+  {{ icon('chevron-right', 13) }}
+  <span>{{ empresa.nombre if empresa else 'Nuevo cliente' }}</span>
+</nav>
+
+<div class="page-head">
+  <div>
+    <h2>{{ 'Configuración de la empresa' if modo == 'editar' else 'Alta de empresa y licencia' }}</h2>
+    <p>{{ 'Actualiza los datos fiscales y de contacto.' if modo == 'editar' else 'Se crea la empresa, su licencia y el usuario administrador en una sola operación.' }}</p>
+  </div>
+  <a class="btn btn--ghost" href="{{ url_for('empresas.index') }}">{{ icon('chevron-left', 15) }} Volver</a>
+</div>
+
+<form method="post" action="{{ url_for('empresas.editar', empresa_id=empresa.id) if empresa else url_for('empresas.nueva') }}" class="entity-form" novalidate>
+  {{ csrf_field() }}
+  <div class="form-layout">
+    <div class="form-main">
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h3>Datos de la empresa</h3>
+            <p>Información visible en la plataforma y en documentos.</p>
+          </div>
+          <span class="step-index">01</span>
+        </div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="field">
+              <label for="nombre">Nombre comercial <span class="req">*</span></label>
+              <input type="text" id="nombre" name="nombre" value="{{ datos.nombre }}" maxlength="120" required placeholder="Ej. Norte Logística" class="{{ 'is-invalid' if errores.nombre }}">
+              {{ error(errores, 'nombre') }}
+            </div>
+            <div class="field">
+              <label for="slug">Identificador (slug) <span class="req">*</span></label>
+              <input type="text" id="slug" name="slug" value="{{ datos.slug }}" maxlength="60" placeholder="norte-logistica" class="mono-input {{ 'is-invalid' if errores.slug }}">
+              <p class="field-help">Único en la plataforma. Se genera desde el nombre si lo dejas vacío.</p>
+              {{ error(errores, 'slug') }}
+            </div>
+            <div class="field">
+              <label for="rfc">RFC / identificación fiscal</label>
+              <input type="text" id="rfc" name="rfc" value="{{ datos.rfc }}" maxlength="20" placeholder="NLO240315K92" class="mono-input">
+            </div>
+            <div class="field">
+              <label for="correo">Correo de contacto</label>
+              <input type="email" id="correo" name="correo" value="{{ datos.correo }}" maxlength="160" placeholder="contacto@empresa.mx" class="{{ 'is-invalid' if errores.correo }}">
+              {{ error(errores, 'correo') }}
+            </div>
+            <div class="field">
+              <label for="telefono">Teléfono</label>
+              <input type="text" id="telefono" name="telefono" value="{{ datos.telefono }}" maxlength="40" placeholder="+52 55 0000 0000">
+            </div>
+            <div class="field">
+              <label for="direccion">Dirección</label>
+              <input type="text" id="direccion" name="direccion" value="{{ datos.direccion }}" maxlength="220" placeholder="Calle, número, ciudad">
+            </div>
+          </div>
+
+          {% if modo == 'editar' %}
+          <div class="status-row">
+            <label class="switch">
+              <input type="checkbox" name="activa" value="1" {{ 'checked' if datos.activa }}>
+              <span class="switch-track" aria-hidden="true"></span>
+              <span class="switch-copy">
+                <strong>Empresa activa</strong>
+                <small>Si se desactiva, todos sus usuarios quedan bloqueados.</small>
+              </span>
+            </label>
+          </div>
+          {% endif %}
+        </div>
+      </section>
+
+      {% if modo == 'nueva' %}
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h3>Licencia inicial</h3>
+            <p>Plan, vigencia y límites contratados.</p>
+          </div>
+          <span class="step-index">02</span>
+        </div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="field">
+              <label for="plan">Plan</label>
+              <div class="select-wrap">
+                <select id="plan" name="plan" data-plan-select class="{{ 'is-invalid' if errores.plan }}">
+                  {% for clave, p in planes.items() %}
+                  <option value="{{ clave }}" data-usuarios="{{ p.usuarios }}" data-productos="{{ p.productos }}" data-precio="{{ p.precio }}" data-nombre="{{ p.nombre }}" {{ 'selected' if licencia.plan == clave }}>{{ p.nombre }} · {{ p.precio }}</option>
+                  {% endfor %}
+                </select>
+                {{ icon('chevron-down', 14, 'select-caret') }}
+              </div>
+              {{ error(errores, 'plan') }}
+            </div>
+            <div class="field">
+              <label for="estado">Estado de la licencia</label>
+              <div class="select-wrap">
+                <select id="estado" name="estado" class="{{ 'is-invalid' if errores.estado }}">
+                  {% for e in estados %}
+                  <option value="{{ e }}" {{ 'selected' if licencia.estado == e }}>{{ e|capitalize }}</option>
+                  {% endfor %}
+                </select>
+                {{ icon('chevron-down', 14, 'select-caret') }}
+              </div>
+              {{ error(errores, 'estado') }}
+            </div>
+            <div class="field">
+              <label for="vence">Vence el <span class="req">*</span></label>
+              <input type="date" id="vence" name="vence" value="{{ licencia.vence }}" required class="{{ 'is-invalid' if errores.vence }}">
+              <p class="field-help">Define cuándo debe renovarse.</p>
+              {{ error(errores, 'vence') }}
+            </div>
+            <div class="field">
+              <label for="max_usuarios">Máximo de usuarios</label>
+              <input type="number" id="max_usuarios" name="max_usuarios" value="{{ licencia.max_usuarios }}" min="1" step="1" data-plan-usuarios class="{{ 'is-invalid' if errores.max_usuarios }}">
+              {{ error(errores, 'max_usuarios') }}
+            </div>
+            <div class="field">
+              <label for="max_productos">Máximo de productos</label>
+              <input type="number" id="max_productos" name="max_productos" value="{{ licencia.max_productos }}" min="1" step="1" data-plan-productos class="{{ 'is-invalid' if errores.max_productos }}">
+              {{ error(errores, 'max_productos') }}
+            </div>
+            <div class="field span-2">
+              <label for="notas">Notas de la licencia</label>
+              <textarea id="notas" name="notas" rows="2" maxlength="255" placeholder="Condiciones especiales, contacto de renovación…">{{ licencia.notas }}</textarea>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h3>Usuario administrador</h3>
+            <p>Primer acceso de la empresa. Podrá crear más usuarios después.</p>
+          </div>
+          <span class="step-index">03</span>
+        </div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="field">
+              <label for="admin_nombre">Nombre completo <span class="req">*</span></label>
+              <input type="text" id="admin_nombre" name="admin_nombre" value="{{ admin.admin_nombre }}" maxlength="120" required placeholder="Ej. Laura Medina" class="{{ 'is-invalid' if errores.admin_nombre }}">
+              {{ error(errores, 'admin_nombre') }}
+            </div>
+            <div class="field">
+              <label for="admin_email">Correo de acceso <span class="req">*</span></label>
+              <input type="email" id="admin_email" name="admin_email" value="{{ admin.admin_email }}" maxlength="160" required placeholder="admin@empresa.mx" class="{{ 'is-invalid' if errores.admin_email }}">
+              {{ error(errores, 'admin_email') }}
+            </div>
+            <div class="field">
+              <label for="admin_password">Contraseña <span class="req">*</span></label>
+              <div class="input-icon input-icon--action">
+                {{ icon('lock', 16) }}
+                <input type="password" id="admin_password" name="admin_password" autocomplete="new-password" minlength="8" required class="{{ 'is-invalid' if errores.admin_password }}">
+                <button class="input-action" type="button" data-password-toggle="admin_password" aria-label="Mostrar contraseña">
+                  <span data-eye-on>{{ icon('eye', 16) }}</span>
+                  <span data-eye-off class="is-hidden">{{ icon('eye-off', 16) }}</span>
+                </button>
+              </div>
+              {{ error(errores, 'admin_password') }}
+            </div>
+            <div class="field">
+              <label for="admin_password_confirmar">Confirmar contraseña</label>
+              <input type="password" id="admin_password_confirmar" name="admin_password_confirmar" autocomplete="new-password" required class="{{ 'is-invalid' if errores.admin_password_confirmar }}">
+              {{ error(errores, 'admin_password_confirmar') }}
+            </div>
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
+      <div class="form-footer">
+        <a class="btn btn--ghost" href="{{ url_for('empresas.index') }}">Cancelar</a>
+        <button class="btn btn--primary" type="submit">{{ icon('check', 16) }} {{ 'Guardar cambios' if modo == 'editar' else 'Crear empresa' }}</button>
+      </div>
+    </div>
+
+    <aside class="form-side">
+      {% if modo == 'nueva' %}
+      <section class="card side-card side-card--accent">
+        <div class="side-card-head">
+          <span class="side-icon">{{ icon('credit-card', 18) }}</span>
+          <h3>Plan seleccionado</h3>
+        </div>
+        <div class="plan-summary">
+          <strong data-plan-name>{{ planes[licencia.plan].nombre if licencia.plan in planes else 'Profesional' }}</strong>
+          <span data-plan-price>{{ planes[licencia.plan].precio if licencia.plan in planes else '' }}</span>
+        </div>
+        <ul class="tip-list">
+          <li>{{ icon('check', 14) }} Aislamiento total de datos por empresa.</li>
+          <li>{{ icon('check', 14) }} Límites de usuarios y productos configurables.</li>
+          <li>{{ icon('check', 14) }} Bloqueo automático al vencer la licencia.</li>
+        </ul>
+      </section>
+      <section class="card side-card">
+        <div class="side-card-head">
+          <span class="side-icon">{{ icon('info', 18) }}</span>
+          <h3>Al crear la empresa</h3>
+        </div>
+        <ul class="tip-list">
+          <li>{{ icon('building', 14) }} <span>Se genera una licencia con clave única.</span></li>
+          <li>{{ icon('user', 14) }} <span>Se crea el administrador con la contraseña indicada.</span></li>
+          <li>{{ icon('key', 14) }} <span>Podrás ajustar plan y vencimiento después.</span></li>
+        </ul>
+      </section>
+      {% else %}
+      <section class="card side-card">
+        <div class="side-card-head">
+          <span class="side-icon">{{ icon('credit-card', 18) }}</span>
+          <h3>Licencia actual</h3>
+        </div>
+        {% if licencia %}
+        <div class="side-stats">
+          <div><span>Plan</span><strong>{{ planes[licencia.plan].nombre if licencia.plan in planes else licencia.plan }}</strong></div>
+          <div><span>Estado</span><strong>{{ licencia_badge(licencia.estado) }}</strong></div>
+          <div><span>Vence</span><strong>{{ licencia.vence|fecha }}</strong></div>
+          <div><span>Clave</span><strong class="mono small">{{ licencia.clave }}</strong></div>
+        </div>
+        <a class="side-link" href="{{ url_for('licencias.editar', licencia_id=licencia.id) }}">Editar licencia {{ icon('arrow-right', 13) }}</a>
+        {% else %}
+        <p class="side-text">Esta empresa no tiene licencia registrada.</p>
+        {% endif %}
+      </section>
+      <section class="card side-card side-card--accent">
+        <div class="side-card-head">
+          <span class="side-icon">{{ icon('shield', 18) }}</span>
+          <h3>Zona sensible</h3>
+        </div>
+        <p class="side-text">Desactivar la empresa bloquea el acceso de todos sus usuarios, incluido el administrador local. El superadministrador conserva el acceso.</p>
+      </section>
+      {% endif %}
+    </aside>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% from 'partials/_macros.html' import icon, mov_badge, paginacion, empty with context %}
+{% block title %}Movimientos{% endblock %}
+{% block page_title %}Movimientos{% endblock %}
+{% block kicker %}Inventario · Auditoría{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Historial de inventario</h2>
+    <p>Cada entrada, salida y ajuste queda registrado con usuario, fecha y motivo.</p>
+  </div>
+  <a class="btn btn--primary" href="{{ url_for('movimientos.nuevo') }}">{{ icon('plus', 16) }} Registrar movimiento</a>
+</div>
+
+<div class="stats-row">
+  <div class="stat-chip"><span class="stat-icon">{{ icon('movements', 16) }}</span><div><strong>{{ resumen.total|numero }}</strong><span>movimientos</span></div></div>
+  <div class="stat-chip stat-chip--success"><span class="stat-icon">{{ icon('trending-up', 16) }}</span><div><strong>+{{ resumen.entradas|numero }}</strong><span>unidades ingresadas</span></div></div>
+  <div class="stat-chip stat-chip--warning"><span class="stat-icon">{{ icon('trending-down', 16) }}</span><div><strong>−{{ resumen.salidas|numero }}</strong><span>unidades retiradas</span></div></div>
+</div>
+
+<section class="card">
+  <div class="toolbar">
+    <form class="filters filters--wrap" method="get" action="{{ url_for('movimientos.index') }}">
+      <div class="search-field">
+        {{ icon('search', 16) }}
+        <input type="search" name="q" value="{{ q }}" placeholder="Producto, SKU, referencia…" aria-label="Buscar movimientos">
+      </div>
+      <div class="select-wrap">
+        <select name="tipo" aria-label="Filtrar por tipo">
+          <option value="">Todos los tipos</option>
+          <option value="entrada" {{ 'selected' if tipo == 'entrada' }}>Entradas</option>
+          <option value="salida" {{ 'selected' if tipo == 'salida' }}>Salidas</option>
+          <option value="ajuste" {{ 'selected' if tipo == 'ajuste' }}>Ajustes</option>
+        </select>
+        {{ icon('chevron-down', 14, 'select-caret') }}
+      </div>
+      <div class="date-field">
+        <label for="desde" class="sr-only">Desde</label>
+        <span>{{ icon('calendar', 15) }}</span>
+        <input type="date" id="desde" name="desde" value="{{ desde }}" aria-label="Desde">
+      </div>
+      <div class="date-field">
+        <label for="hasta" class="sr-only">Hasta</label>
+        <span>{{ icon('calendar', 15) }}</span>
+        <input type="date" id="hasta" name="hasta" value="{{ hasta }}" aria-label="Hasta">
+      </div>
+      <button class="btn btn--ghost btn--sm" type="submit">{{ icon('filter', 15) }} Filtrar</button>
+      {% if q or tipo or desde or hasta %}
+      <a class="btn btn--ghost btn--sm" href="{{ url_for('movimientos.index') }}">{{ icon('x', 14) }} Limpiar</a>
+      {% endif %}
+    </form>
+  </div>
+
+  {% if movimientos %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Fecha y hora</th>
+          <th>Producto</th>
+          <th>Tipo</th>
+          <th class="num">Cantidad</th>
+          <th class="num">Stock final</th>
+          <th>Motivo / referencia</th>
+          <th>Registró</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in movimientos %}
+        <tr>
+          <td class="nowrap">
+            <div class="cell-main">{{ m.creado_en|fecha_hora }}</div>
+            <div class="cell-sub">{{ m.creado_en|fecha }}</div>
+          </td>
+          <td>
+            <div class="cell-main">{{ m.producto }}</div>
+            <div class="cell-sub mono">{{ m.sku }}</div>
+          </td>
+          <td>{{ mov_badge(m.tipo) }}</td>
+          <td class="num mono">
+            {% if m.tipo == 'salida' %}<span class="text-warning">−{{ m.cantidad|numero }}</span>
+            {% elif m.tipo == 'entrada' %}<span class="text-success">+{{ m.cantidad|numero }}</span>
+            {% else %}<span class="text-info">→ {{ m.stock_resultante|numero }}</span>{% endif %}
+            <span class="cell-sub">{{ m.unidad }}</span>
+          </td>
+          <td class="num mono">
+            {{ m.stock_resultante|numero }}
+            <span class="cell-sub">antes {{ m.stock_anterior|numero }}</span>
+          </td>
+          <td>
+            <div class="cell-main muted">{{ m.motivo or 'Sin motivo' }}</div>
+            {% if m.referencia %}<div class="cell-sub mono">{{ m.referencia }}</div>{% endif %}
+          </td>
+          <td class="muted">{{ m.usuario }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="table-foot">
+    <p class="muted">Mostrando {{ pag.desde_num }}–{{ pag.hasta_num }} de {{ pag.total|numero }}</p>
+    {{ paginacion(pag) }}
+  </div>
+  {% else %}
+    {% if q or tipo or desde or hasta %}
+      {{ empty('search', 'Sin movimientos', 'No hay registros que coincidan con los filtros seleccionados.', url_for('movimientos.index'), 'Limpiar filtros') }}
+    {% else %}
+      {{ empty('movements', 'Sin actividad todavía', 'Registra la primera entrada o salida y aquí verás el historial completo.', url_for('movimientos.nuevo'), 'Registrar movimiento') }}
+    {% endif %}
+  {% endif %}
+</section>
+
+<div class="info-note">
+  {{ icon('shield', 17) }}
+  <p>Los movimientos son inmutables: no se editan ni eliminan. Si hubo un error, registra un ajuste con su motivo.</p>
+</div>
+{% endblock %}

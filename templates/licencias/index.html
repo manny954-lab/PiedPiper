@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% from 'partials/_macros.html' import icon, csrf_field, badge, licencia_badge, progreso, empty with context %}
+{% block title %}Licencias{% endblock %}
+{% block page_title %}Licencias{% endblock %}
+{% block kicker %}Plataforma · Suscripciones{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Control de suscripciones</h2>
+    <p>Vigencias, planes y consumo de cada empresa cliente.</p>
+  </div>
+  <a class="btn btn--ghost" href="{{ url_for('empresas.index') }}">{{ icon('building', 16) }} Ver empresas</a>
+</div>
+
+<div class="stats-row stats-row--4">
+  <div class="stat-chip"><span class="stat-icon">{{ icon('key', 16) }}</span><div><strong>{{ resumen.total }}</strong><span>licencias</span></div></div>
+  <div class="stat-chip stat-chip--success"><span class="stat-icon">{{ icon('check-circle', 16) }}</span><div><strong>{{ resumen.activas }}</strong><span>activas</span></div></div>
+  <div class="stat-chip stat-chip--warning"><span class="stat-icon">{{ icon('clock', 16) }}</span><div><strong>{{ resumen.por_vencer }}</strong><span>por vencer (30 días)</span></div></div>
+  <div class="stat-chip stat-chip--danger"><span class="stat-icon">{{ icon('alert-triangle', 16) }}</span><div><strong>{{ resumen.vencidas }}</strong><span>vencidas</span></div></div>
+</div>
+
+<section class="card">
+  <div class="card-head">
+    <div>
+      <h3>Suscripciones registradas</h3>
+      <p>Las licencias vencidas o suspendidas bloquean a los usuarios de la empresa.</p>
+    </div>
+    <span class="badge badge--neutral">{{ licencias|length }}</span>
+  </div>
+
+  {% if licencias %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Empresa</th>
+          <th>Plan</th>
+          <th>Estado</th>
+          <th>Vigencia</th>
+          <th>Usuarios</th>
+          <th>Productos</th>
+          <th class="actions-col">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for l in licencias %}
+        <tr class="{{ 'is-dimmed' if l.estado == 'vencida' and l.dias is not none and l.dias < 0 }}">
+          <td>
+            <div class="cell-main">{{ l.empresa }}{% if not l.empresa_activa %} {{ badge('Empresa inactiva', 'neutral') }}{% endif %}</div>
+            <div class="cell-sub mono">{{ l.clave }}</div>
+          </td>
+          <td>
+            {% if l.plan == 'empresarial' %}{{ badge('Empresarial', 'accent') }}
+            {% elif l.plan == 'profesional' %}{{ badge('Profesional', 'info') }}
+            {% else %}{{ badge('Básico', 'neutral') }}{% endif %}
+          </td>
+          <td>{{ licencia_badge(l.estado, l.dias) }}</td>
+          <td class="nowrap">
+            <div class="cell-main">{{ l.vence|fecha }}</div>
+            <div class="cell-sub {{ 'text-danger' if l.dias is not none and l.dias < 0 else ('text-warning' if l.dias is not none and l.dias <= 30 else '') }}">
+              {% if l.dias is not none %}{{ 'Venció hace ' ~ (-l.dias) ~ ' días' if l.dias < 0 else l.dias ~ ' días restantes' }}{% else %}Sin fecha{% endif %}
+            </div>
+          </td>
+          <td>
+            <div class="usage-cell">
+              <span class="mono">{{ l.usuarios }}/{{ l.max_usuarios }}</span>
+              {{ progreso(l.usuarios, l.max_usuarios, 'danger' if l.usuarios >= l.max_usuarios else 'accent') }}
+            </div>
+          </td>
+          <td>
+            <div class="usage-cell">
+              <span class="mono">{{ l.productos }}/{{ l.max_productos }}</span>
+              {{ progreso(l.productos, l.max_productos, 'danger' if l.productos >= l.max_productos else 'accent') }}
+            </div>
+          </td>
+          <td class="actions-col">
+            <div class="row-actions">
+              <form method="post" action="{{ url_for('licencias.renovar', licencia_id=l.id) }}">
+                {{ csrf_field() }}
+                <button class="btn btn--ghost btn--xs" type="submit" title="Renovar 12 meses" data-confirm="¿Renovar la licencia de «{{ l.empresa }}» por 12 meses y activarla?">{{ icon('refresh', 14) }} Renovar</button>
+              </form>
+              <a class="icon-btn icon-btn--sm" href="{{ url_for('licencias.editar', licencia_id=l.id) }}" title="Editar licencia" aria-label="Editar licencia de {{ l.empresa }}">{{ icon('edit', 15) }}</a>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    {{ empty('key', 'Sin licencias', 'Las licencias se crean junto con cada empresa.', url_for('empresas.nueva'), 'Nueva empresa') }}
+  {% endif %}
+</section>
+{% endblock %}

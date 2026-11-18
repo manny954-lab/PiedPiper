@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% from 'partials/_macros.html' import icon, csrf_field, error, avatar, badge with context %}
+{% block title %}Mi cuenta{% endblock %}
+{% block page_title %}Mi cuenta{% endblock %}
+{% block kicker %}Configuración personal{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Perfil y seguridad</h2>
+    <p>Administra tus datos de acceso y la contraseña con la que entras al panel.</p>
+  </div>
+</div>
+
+<div class="account-grid">
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h3>Datos del perfil</h3>
+        <p>Tu identidad dentro de la plataforma.</p>
+      </div>
+      {{ icon('user', 20, 'card-head-icon') }}
+    </div>
+    <div class="card-body">
+      <div class="profile-strip">
+        {{ avatar(g.user.nombre, 'avatar--lg') }}
+        <div>
+          <strong>{{ g.user.nombre }}</strong>
+          <span>{{ ROLES.get(g.user.rol, g.user.rol) }}{% if g.empresa %} · {{ g.empresa.nombre }}{% endif %}</span>
+        </div>
+        {{ badge('Cuenta activa', 'success') }}
+      </div>
+
+      <form method="post" action="{{ url_for('auth.cuenta', tab='perfil') }}" class="stack-form" novalidate>
+        {{ csrf_field() }}
+        <input type="hidden" name="accion" value="perfil">
+        <div class="field">
+          <label for="nombre">Nombre completo</label>
+          <input type="text" id="nombre" name="nombre" value="{{ g.user.nombre }}" maxlength="120" required class="{{ 'is-invalid' if errores.nombre }}">
+          {{ error(errores, 'nombre') }}
+        </div>
+        <div class="field">
+          <label for="email-cuenta">Correo corporativo</label>
+          <input type="email" id="email-cuenta" value="{{ g.user.email }}" disabled>
+          <p class="field-help">El correo solo puede cambiarlo un administrador.</p>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn--primary" type="submit">{{ icon('check', 16) }} Guardar cambios</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h3>Contraseña</h3>
+        <p>Usa una contraseña robusta y única.</p>
+      </div>
+      {{ icon('lock', 20, 'card-head-icon') }}
+    </div>
+    <div class="card-body">
+      <form method="post" action="{{ url_for('auth.cuenta', tab='password') }}" class="stack-form" novalidate>
+        {{ csrf_field() }}
+        <input type="hidden" name="accion" value="password">
+        <div class="field">
+          <label for="password_actual">Contraseña actual</label>
+          <div class="input-icon input-icon--action">
+            {{ icon('lock', 16) }}
+            <input type="password" id="password_actual" name="password_actual" autocomplete="current-password" required class="{{ 'is-invalid' if errores.password_actual }}">
+            <button class="input-action" type="button" data-password-toggle="password_actual" aria-label="Mostrar contraseña">
+              <span data-eye-on>{{ icon('eye', 16) }}</span>
+              <span data-eye-off class="is-hidden">{{ icon('eye-off', 16) }}</span>
+            </button>
+          </div>
+          {{ error(errores, 'password_actual') }}
+        </div>
+        <div class="field">
+          <label for="password_nueva">Nueva contraseña</label>
+          <div class="input-icon input-icon--action">
+            {{ icon('shield', 16) }}
+            <input type="password" id="password_nueva" name="password" autocomplete="new-password" minlength="8" required class="{{ 'is-invalid' if errores.password }}">
+            <button class="input-action" type="button" data-password-toggle="password_nueva" aria-label="Mostrar contraseña">
+              <span data-eye-on>{{ icon('eye', 16) }}</span>
+              <span data-eye-off class="is-hidden">{{ icon('eye-off', 16) }}</span>
+            </button>
+          </div>
+          <p class="field-help">Mínimo 8 caracteres, con letras y números.</p>
+          {{ error(errores, 'password') }}
+        </div>
+        <div class="field">
+          <label for="password_confirmar">Confirmar nueva contraseña</label>
+          <input type="password" id="password_confirmar" name="password_confirmar" autocomplete="new-password" required class="{{ 'is-invalid' if errores.password_confirmar }}">
+          {{ error(errores, 'password_confirmar') }}
+        </div>
+        <div class="form-actions">
+          <button class="btn btn--primary" type="submit">{{ icon('key', 16) }} Actualizar contraseña</button>
+        </div>
+      </form>
+    </div>
+  </section>
+</div>
+
+<section class="card account-meta">
+  <div class="card-head">
+    <div>
+      <h3>Información de la cuenta</h3>
+      <p>Datos de auditoría y contexto de acceso.</p>
+    </div>
+    {{ icon('shield', 20, 'card-head-icon') }}
+  </div>
+  <div class="meta-grid">
+    <div class="meta-item"><span>Rol</span><strong>{{ ROLES.get(g.user.rol, g.user.rol) }}</strong></div>
+    <div class="meta-item"><span>Empresa</span><strong>{{ g.empresa.nombre if g.empresa else 'Administración global' }}</strong></div>
+    <div class="meta-item"><span>Último acceso</span><strong>{{ g.user.ultimo_acceso|fecha_hora if g.user.ultimo_acceso else 'Primer ingreso' }}</strong></div>
+    <div class="meta-item"><span>Cuenta creada</span><strong>{{ g.user.creado_en|fecha }}</strong></div>
+  </div>
+</section>
+{% endblock %}

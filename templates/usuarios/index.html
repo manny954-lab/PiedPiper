@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% from 'partials/_macros.html' import icon, csrf_field, badge, avatar, progreso, empty with context %}
+{% block title %}Usuarios{% endblock %}
+{% block page_title %}Usuarios{% endblock %}
+{% block kicker %}Administración de la empresa{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Equipo de {{ g.empresa.nombre }}</h2>
+    <p>Administra quién puede consultar y operar el inventario.</p>
+  </div>
+  <a class="btn btn--primary" href="{{ url_for('usuarios.nuevo') }}">{{ icon('plus', 16) }} Nuevo usuario</a>
+</div>
+
+<section class="license-usage">
+  <div class="license-usage-icon">{{ icon('users', 20) }}</div>
+  <div class="license-usage-main">
+    <div class="license-usage-head">
+      <div>
+        <strong>Uso de usuarios</strong>
+        <span>{{ activos }} activos de {{ maximo or '—' }} permitidos por la licencia</span>
+      </div>
+      <span class="license-usage-num">{{ activos }}<small>/{{ maximo }}</small></span>
+    </div>
+    {{ progreso(activos, maximo or 1, 'warning' if maximo and activos / maximo >= 0.8 else 'accent') }}
+    <p class="license-usage-note">Los usuarios desactivados conservan su historial y no ocupan un lugar en la licencia.</p>
+  </div>
+  <a class="btn btn--ghost btn--sm" href="{{ url_for('licencias.mi_licencia') if g.user.rol != 'superadmin' else url_for('licencias.index') }}">Ver licencia {{ icon('arrow-right', 14) }}</a>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <div>
+      <h3>Miembros del equipo</h3>
+      <p>{{ usuarios|length }} cuenta{{ '' if usuarios|length == 1 else 's' }} registrada{{ '' if usuarios|length == 1 else 's' }}.</p>
+    </div>
+    <span class="badge badge--neutral">{{ usuarios|length }}</span>
+  </div>
+
+  {% if usuarios %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Usuario</th>
+          <th>Rol</th>
+          <th>Estado</th>
+          <th>Último acceso</th>
+          <th>Alta</th>
+          <th class="actions-col">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in usuarios %}
+        <tr class="{{ 'is-dimmed' if not u.activo }}">
+          <td>
+            <div class="user-cell">
+              {{ avatar(u.nombre, 'avatar--sm') }}
+              <div>
+                <div class="cell-main">{{ u.nombre }}{% if u.id == g.user.id %} <span class="you-tag">Tú</span>{% endif %}</div>
+                <div class="cell-sub">{{ u.email }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            {% if u.rol == 'admin' %}{{ badge('Administrador', 'accent') }}
+            {% else %}{{ badge('Operador', 'neutral') }}{% endif %}
+          </td>
+          <td>
+            {% if u.activo %}{{ badge('Activo', 'success') }}{% else %}{{ badge('Inactivo', 'neutral') }}{% endif %}
+          </td>
+          <td class="muted nowrap">{{ u.ultimo_acceso|fecha_hora if u.ultimo_acceso else 'Nunca' }}</td>
+          <td class="muted nowrap">{{ u.creado_en|fecha }}</td>
+          <td class="actions-col">
+            <div class="row-actions">
+              <a class="icon-btn icon-btn--sm" href="{{ url_for('usuarios.editar', usuario_id=u.id) }}" title="Editar usuario" aria-label="Editar {{ u.nombre }}">{{ icon('edit', 16) }}</a>
+              {% if u.id != g.user.id %}
+              <form method="post" action="{{ url_for('usuarios.cambiar_estado', usuario_id=u.id) }}">
+                {{ csrf_field() }}
+                <button class="icon-btn icon-btn--sm {{ 'is-danger' if u.activo }}" type="submit"
+                        title="{{ 'Desactivar usuario' if u.activo else 'Reactivar usuario' }}"
+                        data-confirm="{{ '¿Desactivar a ' ~ u.nombre ~ '? No podrá iniciar sesión.' if u.activo else '¿Reactivar a ' ~ u.nombre ~ '?' }}">
+                  {{ icon('x' if u.activo else 'check', 16) }}
+                </button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    {{ empty('users', 'Sin usuarios', 'Agrega a tu primer colaborador para delegar la operación.', url_for('usuarios.nuevo'), 'Nuevo usuario') }}
+  {% endif %}
+</section>
+
+<div class="info-note">
+  {{ icon('shield', 17) }}
+  <p>Los administradores pueden crear usuarios, editar el catálogo y gestionar movimientos. Los operadores solo consultan el inventario y registran movimientos.</p>
+</div>
+{% endblock %}

@@ -1,0 +1,224 @@
+{% from 'partials/_macros.html' import icon, csrf_field, avatar with context %}
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Panel{% endblock %} · {{ app_nombre }}</title>
+  <meta name="description" content="Plataforma de gestión de inventario empresarial de PiedPiper Software.">
+  <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='img/flautista.jpg') }}">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('pp-theme');
+        document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : 'dark');
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body class="app-body">
+{% include 'partials/icons.html' %}
+<a class="skip-link" href="#contenido">Saltar al contenido</a>
+
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <a class="brand" href="{{ url_for('dashboard.index') }}" aria-label="PiedPiper Inventario, ir al panel">
+        <span class="brand-mark">
+          <img src="{{ url_for('static', filename='img/flautista-mark.png') }}" alt="Flautista, logotipo de PiedPiper">
+        </span>
+        <span class="brand-text">
+          <strong>PiedPiper</strong>
+          <small>INVENTARIO</small>
+        </span>
+      </a>
+    </div>
+
+    <div class="tenant">
+      <span class="tenant-avatar">{{ g.empresa.nombre[:1]|upper if g.empresa else '—' }}</span>
+      <div class="tenant-info">
+        <small>EMPRESA ACTIVA</small>
+        <strong>{{ g.empresa.nombre if g.empresa else 'Sin empresa' }}</strong>
+      </div>
+      <span class="dot {{ 'dot--success' if g.licencia_ok and g.empresa else ('dot--warning' if g.empresa else 'dot--muted') }}" title="Estado de la licencia"></span>
+    </div>
+
+    <nav class="nav" aria-label="Navegación principal">
+      <p class="nav-label">Operación</p>
+      <a class="nav-item {{ 'is-active' if request.endpoint == 'dashboard.index' }}" href="{{ url_for('dashboard.index') }}">
+        {{ icon('panel') }}<span>Panel</span>
+      </a>
+      <a class="nav-item {{ 'is-active' if ruta_activa == 'productos' }}" href="{{ url_for('productos.index') }}">
+        {{ icon('box') }}<span>Productos</span>
+        {% if g.alertas_stock %}<span class="nav-count" title="{{ g.alertas_stock }} con stock bajo">{{ g.alertas_stock }}</span>{% endif %}
+      </a>
+      <a class="nav-item {{ 'is-active' if ruta_activa == 'categorias' }}" href="{{ url_for('categorias.index') }}">
+        {{ icon('tag') }}<span>Categorías</span>
+      </a>
+      <a class="nav-item {{ 'is-active' if ruta_activa == 'movimientos' }}" href="{{ url_for('movimientos.index') }}">
+        {{ icon('movements') }}<span>Movimientos</span>
+      </a>
+
+      <p class="nav-label">Cuenta</p>
+      {% if g.user.rol in ('admin', 'superadmin') %}
+      <a class="nav-item {{ 'is-active' if ruta_activa == 'usuarios' }}" href="{{ url_for('usuarios.index') }}">
+        {{ icon('users') }}<span>Usuarios</span>
+      </a>
+      {% endif %}
+      {% if g.user.rol != 'superadmin' %}
+      <a class="nav-item {{ 'is-active' if ruta_activa == 'licencias' }}" href="{{ url_for('licencias.mi_licencia') }}">
+        {{ icon('credit-card') }}<span>Mi licencia</span>
+      </a>
+      {% endif %}
+      <a class="nav-item {{ 'is-active' if request.endpoint == 'auth.cuenta' }}" href="{{ url_for('auth.cuenta') }}">
+        {{ icon('user') }}<span>Mi cuenta</span>
+      </a>
+
+      {% if g.user.rol == 'superadmin' %}
+      <p class="nav-label">Plataforma</p>
+      <a class="nav-item {{ 'is-active' if ruta_activa == 'empresas' }}" href="{{ url_for('empresas.index') }}">
+        {{ icon('building') }}<span>Empresas</span>
+      </a>
+      <a class="nav-item {{ 'is-active' if ruta_activa == 'licencias' }}" href="{{ url_for('licencias.index') }}">
+        {{ icon('key') }}<span>Licencias</span>
+      </a>
+      {% endif %}
+    </nav>
+
+    <div class="sidebar-bottom">
+      {% if g.empresa %}
+      <div class="license-mini {{ 'is-warning' if g.licencia_dias is not none and g.licencia_dias <= 15 }}">
+        <div class="license-mini-head">
+          {{ icon('shield', 15) }}
+          <span>{% if g.licencia and g.licencia.plan in PLANES %}{{ PLANES[g.licencia.plan].nombre }}{% else %}Sin licencia{% endif %}</span>
+          {% if g.licencia %}<span class="license-mini-days">{{ g.licencia_dias }}d</span>{% endif %}
+        </div>
+        <p>{% if g.licencia %}Vence el {{ g.licencia.vence|fecha }}{% else %}Configura una licencia{% endif %}</p>
+        <a href="{% if g.user.rol == 'superadmin' %}{{ url_for('licencias.index') }}{% else %}{{ url_for('licencias.mi_licencia') }}{% endif %}">
+          Gestionar licencia {{ icon('arrow-right', 13) }}
+        </a>
+      </div>
+      {% endif %}
+
+      <div class="user-card">
+        {{ avatar(g.user.nombre, 'avatar--sm') }}
+        <div class="user-card-info">
+          <strong>{{ g.user.nombre }}</strong>
+          <small>{{ ROLES.get(g.user.rol, g.user.rol) }}</small>
+        </div>
+        <a class="icon-btn" href="{{ url_for('auth.cuenta') }}" title="Mi cuenta" aria-label="Mi cuenta">{{ icon('user', 16) }}</a>
+        <form method="post" action="{{ url_for('auth.logout') }}">
+          {{ csrf_field() }}
+          <button class="icon-btn" type="submit" title="Cerrar sesión" aria-label="Cerrar sesión">{{ icon('logout', 16) }}</button>
+        </form>
+      </div>
+    </div>
+  </aside>
+
+  <button class="scrim" type="button" data-sidebar-close aria-label="Cerrar menú" tabindex="-1"></button>
+
+  <div class="workspace">
+    <header class="topbar">
+      <button class="icon-btn sidebar-toggle" type="button" data-sidebar-open aria-label="Abrir menú">
+        {{ icon('menu', 20) }}
+      </button>
+
+      <div class="topbar-heading">
+        <span class="topbar-kicker">{% block kicker %}{% if g.empresa %}{{ g.empresa.nombre }}{% else %}Plataforma PiedPiper{% endif %}{% endblock %}</span>
+        <h1>{% block page_title %}Panel{% endblock %}</h1>
+      </div>
+
+      <div class="topbar-actions">
+        {% if g.empresa_id %}
+        <form class="global-search" method="get" action="{{ url_for('productos.index') }}" role="search">
+          <label class="sr-only" for="busqueda-global">Buscar producto</label>
+          <span class="global-search-icon">{{ icon('search', 16) }}</span>
+          <input id="busqueda-global" type="search" name="q" placeholder="Buscar producto o SKU…" autocomplete="off" data-global-search>
+          <kbd>/</kbd>
+        </form>
+        {% endif %}
+
+        {% if g.user.rol == 'superadmin' and g.empresas %}
+        <form class="tenant-switch" method="post" action="{{ url_for('empresas.contexto') }}">
+          {{ csrf_field() }}
+          <input type="hidden" name="volver" value="{{ request.full_path }}">
+          <label class="sr-only" for="empresa-contexto">Empresa activa</label>
+          <select id="empresa-contexto" name="empresa_id" data-auto-submit title="Cambiar empresa activa">
+            <option value="">Vista global</option>
+            {% for e in g.empresas %}
+            <option value="{{ e.id }}" {{ 'selected' if g.empresa_id == e.id }}>{{ e.nombre }}</option>
+            {% endfor %}
+          </select>
+          {{ icon('chevron-down', 14, 'select-caret') }}
+        </form>
+        {% endif %}
+
+        {% if g.empresa_id %}
+        <a class="icon-btn icon-btn--badge" href="{{ url_for('productos.index', estado='bajo') }}" title="Productos con stock bajo" aria-label="Alertas de stock">
+          {{ icon('alert-triangle', 18) }}
+          {% if g.alertas_stock %}<span class="notif-count">{{ g.alertas_stock }}</span>{% endif %}
+        </a>
+        {% endif %}
+
+        <button class="icon-btn theme-toggle" type="button" data-theme-toggle aria-label="Cambiar entre tema oscuro y claro" title="Cambiar tema">
+          <span class="theme-icon theme-icon--sun">{{ icon('sun', 18) }}</span>
+          <span class="theme-icon theme-icon--moon">{{ icon('moon', 18) }}</span>
+        </button>
+
+        <a class="topbar-user" href="{{ url_for('auth.cuenta') }}" title="{{ g.user.nombre }}">
+          {{ avatar(g.user.nombre, 'avatar--sm') }}
+        </a>
+      </div>
+    </header>
+
+    <main id="contenido" class="content">
+      {% if g.licencia and g.licencia_dias is not none and g.licencia_dias <= 15 and g.licencia_ok and g.user.rol != 'superadmin' %}
+      <div class="banner banner--warning">
+        {{ icon('alert-triangle', 18) }}
+        <div>
+          <strong>Tu licencia vence pronto.</strong>
+          Quedan {{ g.licencia_dias }} días. Contacta a {{ soporte_email }} para renovarla.
+        </div>
+      </div>
+      {% endif %}
+
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="app-footer">
+      <span>© {{ hoy.year }} PiedPiper Software. Todos los derechos reservados.</span>
+      <span class="footer-meta">
+        <span class="dot dot--success"></span> Sesión segura
+        <span class="footer-sep">·</span> v{{ app_version }}
+      </span>
+    </footer>
+  </div>
+</div>
+
+{% with mensajes = get_flashed_messages(with_categories=true) %}
+{% if mensajes %}
+<div class="toast-stack" data-toasts>
+  {% for categoria, mensaje in mensajes %}
+  <div class="toast toast--{{ categoria }}" role="status">
+    <span class="toast-icon">
+      {% if categoria == 'success' %}{{ icon('check-circle', 18) }}
+      {% elif categoria == 'error' %}{{ icon('alert-circle', 18) }}
+      {% elif categoria == 'warning' %}{{ icon('alert-triangle', 18) }}
+      {% else %}{{ icon('info', 18) }}{% endif %}
+    </span>
+    <p>{{ mensaje }}</p>
+    <button class="toast-close" type="button" data-toast-close aria-label="Cerrar aviso">{{ icon('x', 14) }}</button>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+{% from 'partials/_macros.html' import icon, csrf_field, badge, stock_badge, stock_dot, paginacion, empty with context %}
+{% block title %}Productos{% endblock %}
+{% block page_title %}Productos{% endblock %}
+{% block kicker %}Inventario{% endblock %}
+
+{% block content %}
+{% macro sort_th(campo, etiqueta, extra='') %}
+{% set activo = orden in (campo, '-' + campo) %}
+{% set siguiente = ('-' + campo) if orden == campo else campo %}
+<th class="{{ extra }}">
+  <a class="th-sort {{ 'is-active' if activo }}" href="{{ url_con_args(orden=siguiente, page=1) }}">
+    {{ etiqueta }}
+    {% if activo %}{{ icon('chevron-down', 12, 'sort-icon ' + ('is-asc' if orden == campo else '')) }}{% endif %}
+  </a>
+</th>
+{% endmacro %}
+
+<div class="page-head">
+  <div>
+    <h2>Catálogo de inventario</h2>
+    <p>Consulta existencias, precios y estado de cada producto de {{ g.empresa.nombre }}.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn--ghost" href="{{ url_for('movimientos.nuevo') }}">{{ icon('movements', 16) }} Movimiento</a>
+    {% if g.user.rol in ('admin', 'superadmin') %}
+    <a class="btn btn--primary" href="{{ url_for('productos.nuevo') }}">{{ icon('plus', 16) }} Nuevo producto</a>
+    {% endif %}
+  </div>
+</div>
+
+<section class="card">
+  <div class="toolbar">
+    <form class="filters" method="get" action="{{ url_for('productos.index') }}">
+      <input type="hidden" name="orden" value="{{ orden }}">
+      <div class="search-field">
+        {{ icon('search', 16) }}
+        <input type="search" name="q" value="{{ q }}" placeholder="Buscar por nombre, SKU o descripción…" aria-label="Buscar productos">
+      </div>
+      <div class="select-wrap">
+        <select name="categoria" aria-label="Filtrar por categoría">
+          <option value="">Todas las categorías</option>
+          {% for c in categorias %}
+          <option value="{{ c.id }}" {{ 'selected' if categoria == c.id }}>{{ c.nombre }}{% if not c.activo %} (inactiva){% endif %}</option>
+          {% endfor %}
+        </select>
+        {{ icon('chevron-down', 14, 'select-caret') }}
+      </div>
+      <div class="select-wrap">
+        <select name="estado" aria-label="Filtrar por estado">
+          <option value="todos" {{ 'selected' if estado == 'todos' }}>Todos los estados</option>
+          <option value="activo" {{ 'selected' if estado == 'activo' }}>Activos</option>
+          <option value="bajo" {{ 'selected' if estado == 'bajo' }}>Stock bajo</option>
+          <option value="agotado" {{ 'selected' if estado == 'agotado' }}>Agotados</option>
+          <option value="inactivo" {{ 'selected' if estado == 'inactivo' }}>Inactivos</option>
+        </select>
+        {{ icon('chevron-down', 14, 'select-caret') }}
+      </div>
+      <button class="btn btn--ghost btn--sm" type="submit">{{ icon('filter', 15) }} Filtrar</button>
+      {% if q or categoria or estado != 'todos' %}
+      <a class="btn btn--ghost btn--sm" href="{{ url_for('productos.index') }}">{{ icon('x', 14) }} Limpiar</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <div class="table-summary">
+    <span><strong>{{ resumen.total|numero }}</strong> productos</span>
+    <span class="sep"></span>
+    <span><strong>{{ resumen.unidades|numero }}</strong> unidades</span>
+    <span class="sep"></span>
+    <span>Valor a costo <strong>{{ resumen.valor|money }}</strong></span>
+  </div>
+
+  {% if productos %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          {{ sort_th('nombre', 'Producto') }}
+          <th>Categoría</th>
+          {{ sort_th('stock', 'Stock', 'num') }}
+          {{ sort_th('precio', 'Precio venta', 'num') }}
+          <th class="num">Valor</th>
+          <th>Estado</th>
+          <th class="actions-col">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in productos %}
+        <tr class="{{ 'is-dimmed' if not p.activo }}">
+          <td>
+            <div class="cell-main">{{ p.nombre }}</div>
+            <div class="cell-sub"><span class="mono">{{ p.sku }}</span>{% if p.ubicacion %} · {{ p.ubicacion }}{% endif %}</div>
+          </td>
+          <td><span class="badge badge--neutral">{{ p.categoria }}</span></td>
+          <td class="num">
+            <div class="stock-cell">
+              {{ stock_dot(p.stock, p.stock_minimo, p.activo) }}
+              <strong class="mono">{{ p.stock|numero }}</strong>
+              <small>{{ p.unidad }}</small>
+            </div>
+            <div class="cell-sub">mín. {{ p.stock_minimo }}</div>
+          </td>
+          <td class="num">
+            <div class="mono">{{ p.precio_venta|money }}</div>
+            <div class="cell-sub">costo {{ p.precio_compra|money }}</div>
+          </td>
+          <td class="num mono">{{ (p.stock * p.precio_compra)|money }}</td>
+          <td>
+            {% if p.activo and p.stock <= p.stock_minimo %}
+              {{ badge('Stock bajo', 'warning') }}
+            {% elif p.activo %}
+              {{ badge('Activo', 'success') }}
+            {% else %}
+              {{ badge('Inactivo', 'neutral') }}
+            {% endif %}
+          </td>
+          <td class="actions-col">
+            <div class="row-actions">
+              {% if g.user.rol in ('admin', 'superadmin') %}
+              <a class="icon-btn icon-btn--sm" href="{{ url_for('productos.editar', producto_id=p.id) }}" title="Editar producto" aria-label="Editar {{ p.nombre }}">{{ icon('edit', 16) }}</a>
+              <form method="post" action="{{ url_for('productos.cambiar_estado', producto_id=p.id) }}">
+                {{ csrf_field() }}
+                <input type="hidden" name="volver" value="{{ request.full_path }}">
+                <button class="icon-btn icon-btn--sm {{ 'is-danger' if p.activo }}" type="submit"
+                        title="{{ 'Desactivar producto' if p.activo else 'Reactivar producto' }}"
+                        data-confirm="{{ '¿Desactivar «' ~ p.nombre ~ '»? Dejará de aparecer en los movimientos.' if p.activo else '¿Reactivar «' ~ p.nombre ~ '»?' }}">
+                  {{ icon('x' if p.activo else 'check', 16) }}
+                </button>
+              </form>
+              {% else %}
+              <span class="muted">—</span>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="table-foot">
+    <p class="muted">Mostrando {{ pag.desde_num }}–{{ pag.hasta_num }} de {{ pag.total|numero }}</p>
+    {{ paginacion(pag) }}
+  </div>
+  {% else %}
+    {% if q or categoria or estado != 'todos' %}
+      {{ empty('search', 'Sin resultados', 'No encontramos productos con esos filtros. Ajusta la búsqueda o límpialos.', url_for('productos.index'), 'Limpiar filtros') }}
+    {% else %}
+      {{ empty('box', 'Catálogo vacío', 'Registra tu primer producto para empezar a mover inventario.', url_for('productos.nuevo') if g.user.rol in ('admin', 'superadmin') else None, 'Nuevo producto') }}
+    {% endif %}
+  {% endif %}
+</section>
+{% endblock %}

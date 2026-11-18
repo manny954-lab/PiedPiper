@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+{% from 'partials/_macros.html' import icon, csrf_field, error, empty with context %}
+{% block title %}Nuevo movimiento{% endblock %}
+{% block page_title %}Registrar movimiento{% endblock %}
+{% block kicker %}Inventario · Movimientos{% endblock %}
+
+{% block content %}
+<nav class="breadcrumb" aria-label="Ruta">
+  <a href="{{ url_for('movimientos.index') }}">Movimientos</a>
+  {{ icon('chevron-right', 13) }}
+  <span>Nuevo registro</span>
+</nav>
+
+<div class="page-head">
+  <div>
+    <h2>Entrada, salida o ajuste</h2>
+    <p>El stock se actualiza de forma atómica y queda registrado en la auditoría.</p>
+  </div>
+  <a class="btn btn--ghost" href="{{ url_for('movimientos.index') }}">{{ icon('chevron-left', 15) }} Volver al historial</a>
+</div>
+
+{% if not productos %}
+  <div class="card empty-hero">
+    <span class="empty-icon">{{ icon('box', 30) }}</span>
+    <h2>No hay productos activos</h2>
+    <p>Para registrar un movimiento primero necesitas al menos un producto activo en el catálogo.</p>
+    {% if g.user.rol in ('admin', 'superadmin') %}
+    <a class="btn btn--primary" href="{{ url_for('productos.nuevo') }}">{{ icon('plus', 16) }} Crear producto</a>
+    {% endif %}
+  </div>
+{% else %}
+<form method="post" action="{{ url_for('movimientos.nuevo') }}" class="entity-form" novalidate data-mov-form>
+  {{ csrf_field() }}
+  <div class="form-layout">
+    <div class="form-main">
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h3>Tipo de movimiento</h3>
+            <p>Define cómo afecta al inventario.</p>
+          </div>
+          <span class="step-index">01</span>
+        </div>
+        <div class="card-body">
+          <div class="type-grid">
+            <label class="type-option">
+              <input type="radio" name="tipo" value="entrada" data-mov-tipo {{ 'checked' if datos.tipo == 'entrada' }}>
+              <span class="type-card">
+                <span class="type-icon type-icon--in">{{ icon('trending-up', 18) }}</span>
+                <strong>Entrada</strong>
+                <small>Compra, devolución o reposición</small>
+              </span>
+            </label>
+            <label class="type-option">
+              <input type="radio" name="tipo" value="salida" data-mov-tipo {{ 'checked' if datos.tipo == 'salida' }}>
+              <span class="type-card">
+                <span class="type-icon type-icon--out">{{ icon('trending-down', 18) }}</span>
+                <strong>Salida</strong>
+                <small>Venta, consumo o entrega</small>
+              </span>
+            </label>
+            <label class="type-option">
+              <input type="radio" name="tipo" value="ajuste" data-mov-tipo {{ 'checked' if datos.tipo == 'ajuste' }}>
+              <span class="type-card">
+                <span class="type-icon type-icon--adj">{{ icon('sliders', 18) }}</span>
+                <strong>Ajuste</strong>
+                <small>Fija el stock tras un conteo</small>
+              </span>
+            </label>
+          </div>
+          {{ error(errores, 'tipo') }}
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h3>Detalle del movimiento</h3>
+            <p>Producto, cantidad y referencia documental.</p>
+          </div>
+          <span class="step-index">02</span>
+        </div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="field span-2">
+              <label for="producto_id">Producto <span class="req">*</span></label>
+              <div class="select-wrap">
+                <select id="producto_id" name="producto_id" required data-mov-producto class="{{ 'is-invalid' if errores.producto_id }}">
+                  <option value="">Selecciona un producto…</option>
+                  {% for p in productos %}
+                  <option value="{{ p.id }}" data-stock="{{ p.stock }}" data-unidad="{{ p.unidad }}" data-sku="{{ p.sku }}"
+                          {{ 'selected' if datos.producto_id|string == p.id|string }}>
+                    {{ p.nombre }} — {{ p.sku }} ({{ p.stock }} {{ p.unidad }})
+                  </option>
+                  {% endfor %}
+                </select>
+                {{ icon('chevron-down', 14, 'select-caret') }}
+              </div>
+              {{ error(errores, 'producto_id') }}
+            </div>
+
+            <div class="field">
+              <label for="cantidad"><span data-cantidad-label>{{ 'Nuevo stock' if datos.tipo == 'ajuste' else 'Cantidad' }}</span> <span class="req">*</span></label>
+              <input type="number" id="cantidad" name="cantidad" value="{{ datos.cantidad }}" min="0" step="1" required data-mov-cantidad class="{{ 'is-invalid' if errores.cantidad }}">
+              <p class="field-help" data-cantidad-help>{{ 'Escribe el stock real contado.' if datos.tipo == 'ajuste' else 'Unidades que ingresan o salen.' }}</p>
+              {{ error(errores, 'cantidad') }}
+            </div>
+
+            <div class="field">
+              <label for="referencia">Referencia</label>
+              <input type="text" id="referencia" name="referencia" value="{{ datos.referencia }}" maxlength="80" placeholder="OC-1042, FAC-2301…" class="mono-input">
+              <p class="field-help">Orden, factura o documento relacionado.</p>
+            </div>
+
+            <div class="field span-2">
+              <label for="motivo">Motivo <span class="req" data-motivo-req {{ 'hidden' if datos.tipo != 'ajuste' }}>*</span></label>
+              <input type="text" id="motivo" name="motivo" value="{{ datos.motivo }}" maxlength="200" placeholder="Ej. Compra a proveedor, venta mostrador, conteo físico…" class="{{ 'is-invalid' if errores.motivo }}">
+              <p class="field-help">Obligatorio para ajustes; recomendado para cualquier movimiento.</p>
+              {{ error(errores, 'motivo') }}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="form-footer">
+        <a class="btn btn--ghost" href="{{ url_for('movimientos.index') }}">Cancelar</a>
+        <button class="btn btn--primary" type="submit">{{ icon('check', 16) }} Registrar movimiento</button>
+      </div>
+    </div>
+
+    <aside class="form-side">
+      <section class="card side-card stock-preview" data-stock-preview>
+        <div class="side-card-head">
+          <span class="side-icon">{{ icon('box', 18) }}</span>
+          <h3>Vista previa</h3>
+        </div>
+        <div class="preview-empty" data-preview-empty>
+          <p>Selecciona un producto y una cantidad para ver cómo quedará el stock.</p>
+        </div>
+        <div class="preview-body is-hidden" data-preview-body>
+          <div class="preview-product">
+            <strong data-preview-producto>—</strong>
+            <span class="mono" data-preview-sku>—</span>
+          </div>
+          <div class="preview-flow">
+            <div>
+              <span>Stock actual</span>
+              <strong class="mono"><span data-preview-actual>0</span> <small data-preview-unidad>pza</small></strong>
+            </div>
+            <span class="preview-arrow" data-preview-arrow>{{ icon('arrow-right', 18) }}</span>
+            <div>
+              <span>Quedará en</span>
+              <strong class="mono preview-result" data-preview-nuevo>0</strong>
+            </div>
+          </div>
+          <p class="preview-note" data-preview-nota>Completa el formulario.</p>
+          <p class="preview-warning is-hidden" data-preview-warning>{{ icon('alert-triangle', 15) }} La cantidad supera el stock disponible.</p>
+        </div>
+      </section>
+
+      <section class="card side-card">
+        <div class="side-card-head">
+          <span class="side-icon">{{ icon('info', 18) }}</span>
+          <h3>Cómo funciona</h3>
+        </div>
+        <ul class="tip-list">
+          <li>{{ icon('trending-up', 14) }} <span><strong>Entrada:</strong> suma unidades al stock.</span></li>
+          <li>{{ icon('trending-down', 14) }} <span><strong>Salida:</strong> resta unidades; no permite negativos.</span></li>
+          <li>{{ icon('sliders', 14) }} <span><strong>Ajuste:</strong> fija el stock exacto del conteo físico.</span></li>
+        </ul>
+        <p class="side-meta">Registrado por {{ g.user.nombre }} · {{ hoy|fecha }}</p>
+      </section>
+    </aside>
+  </div>
+</form>
+{% endif %}
+{% endblock %}

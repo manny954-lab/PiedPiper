@@ -1,0 +1,97 @@
+{% macro icon(name, size=18, clase='') -%}
+<svg class="icon {{ clase }}" width="{{ size }}" height="{{ size }}" aria-hidden="true" focusable="false"><use href="#i-{{ name }}"></use></svg>
+{%- endmacro %}
+
+{% macro csrf_field() -%}
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+{%- endmacro %}
+
+{% macro error(errores, campo) -%}
+{% if errores and errores[campo] %}
+<p class="field-error">{{ icon('alert-circle', 14) }}<span>{{ errores[campo] }}</span></p>
+{% endif %}
+{%- endmacro %}
+
+{% macro badge(texto, tono='neutral') -%}
+<span class="badge badge--{{ tono }}">{{ texto }}</span>
+{%- endmacro %}
+
+{% macro estado_badge(activo) -%}
+{% if activo %}{{ badge('Activo', 'success') }}{% else %}{{ badge('Inactivo', 'neutral') }}{% endif %}
+{%- endmacro %}
+
+{% macro stock_badge(stock, minimo, activo=1) -%}
+{% if not activo %}
+{{ badge('Inactivo', 'neutral') }}
+{% elif stock <= 0 %}
+{{ badge('Agotado', 'danger') }}
+{% elif stock <= minimo %}
+{{ badge('Stock bajo', 'warning') }}
+{% else %}
+{{ badge('Disponible', 'success') }}
+{% endif %}
+{%- endmacro %}
+
+{% macro mov_badge(tipo) -%}
+{% if tipo == 'entrada' %}{{ badge('Entrada', 'success') }}
+{% elif tipo == 'salida' %}{{ badge('Salida', 'warning') }}
+{% else %}{{ badge('Ajuste', 'info') }}{% endif %}
+{%- endmacro %}
+
+{% macro licencia_badge(estado, dias=None) -%}
+{% if estado == 'activa' %}{{ badge('Activa', 'success') }}
+{% elif estado == 'prueba' %}{{ badge('Prueba', 'info') }}
+{% elif estado == 'suspendida' %}{{ badge('Suspendida', 'danger') }}
+{% else %}{{ badge('Vencida', 'danger') }}{% endif %}
+{%- endmacro %}
+
+{% macro progreso(valor, maximo, tono='accent') -%}
+{% set pct = (valor * 100 / maximo) if maximo else 0 %}
+<div class="progress progress--{{ tono }}" role="progressbar" aria-valuenow="{{ valor }}" aria-valuemin="0" aria-valuemax="{{ maximo }}">
+  <span style="width: {{ 100 if pct > 100 else pct }}%"></span>
+</div>
+{%- endmacro %}
+
+{% macro paginacion(pag) -%}
+{% if pag.paginas > 1 %}
+<nav class="pagination" aria-label="Paginación">
+  <a class="page-btn {{ 'is-disabled' if not pag.hay_anterior }}" {% if pag.hay_anterior %}href="{{ url_con_args(page=pag.pagina - 1) }}"{% else %}aria-disabled="true" tabindex="-1"{% endif %} aria-label="Anterior">{{ icon('chevron-left', 16) }}</a>
+  {% set inicio = [1, pag.pagina - 2]|max %}
+  {% set fin = [pag.paginas, pag.pagina + 2]|min %}
+  {% if inicio > 1 %}
+    <a class="page-btn" href="{{ url_con_args(page=1) }}">1</a>
+    {% if inicio > 2 %}<span class="page-gap">…</span>{% endif %}
+  {% endif %}
+  {% for p in range(inicio, fin + 1) %}
+    <a class="page-btn {{ 'is-active' if p == pag.pagina }}" href="{{ url_con_args(page=p) }}" {% if p == pag.pagina %}aria-current="page"{% endif %}>{{ p }}</a>
+  {% endfor %}
+  {% if fin < pag.paginas %}
+    {% if fin < pag.paginas - 1 %}<span class="page-gap">…</span>{% endif %}
+    <a class="page-btn" href="{{ url_con_args(page=pag.paginas) }}">{{ pag.paginas }}</a>
+  {% endif %}
+  <a class="page-btn {{ 'is-disabled' if not pag.hay_siguiente }}" {% if pag.hay_siguiente %}href="{{ url_con_args(page=pag.pagina + 1) }}"{% else %}aria-disabled="true" tabindex="-1"{% endif %} aria-label="Siguiente">{{ icon('chevron-right', 16) }}</a>
+</nav>
+{% endif %}
+{%- endmacro %}
+
+{% macro avatar(nombre, tamano='') -%}
+<span class="avatar {{ tamano }}">{{ nombre|iniciales }}</span>
+{%- endmacro %}
+
+{% macro empty(icono, titulo, texto, accion_url=None, accion_texto=None) -%}
+<div class="empty">
+  <span class="empty-icon">{{ icon(icono, 26) }}</span>
+  <h3>{{ titulo }}</h3>
+  <p>{{ texto }}</p>
+  {% if accion_url and accion_texto %}
+  <a class="btn btn--primary btn--sm" href="{{ accion_url }}">{{ icon('plus', 15) }} {{ accion_texto }}</a>
+  {% endif %}
+</div>
+{%- endmacro %}
+
+{% macro stock_dot(stock, minimo, activo=1) -%}
+{% if not activo %}<span class="dot dot--muted"></span>
+{% elif stock <= 0 %}<span class="dot dot--danger"></span>
+{% elif stock <= minimo %}<span class="dot dot--warning"></span>
+{% else %}<span class="dot dot--success"></span>{% endif %}
+{%- endmacro %}

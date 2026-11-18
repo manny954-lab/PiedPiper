@@ -1,0 +1,80 @@
+{% extends 'auth_base.html' %}
+{% from 'partials/_macros.html' import icon, csrf_field, error with context %}
+{% block title %}Iniciar sesión{% endblock %}
+
+{% block auth_content %}
+<div class="auth-card">
+  <div class="auth-card-head">
+    <img class="auth-mark" src="{{ url_for('static', filename='img/flautista-mark.png') }}" alt="PiedPiper">
+    <p class="eyebrow">Acceso corporativo</p>
+    <h1>Inicia sesión</h1>
+    <p class="auth-subtitle">Ingresa con las credenciales asignadas por el administrador de tu empresa.</p>
+  </div>
+
+  <form class="auth-form" method="post" action="{{ url_for('auth.login') }}" novalidate>
+    {{ csrf_field() }}
+    {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+
+    <div class="field">
+      <label for="email">Correo corporativo</label>
+      <div class="input-icon">
+        {{ icon('mail', 17) }}
+        <input type="email" id="email" name="email" value="{{ email }}" placeholder="nombre@empresa.com"
+               autocomplete="username" inputmode="email" required autofocus
+               class="{{ 'is-invalid' if errores.email }}">
+      </div>
+      {{ error(errores, 'email') }}
+    </div>
+
+    <div class="field">
+      <label for="password">Contraseña</label>
+      <div class="input-icon input-icon--action">
+        {{ icon('lock', 17) }}
+        <input type="password" id="password" name="password" placeholder="••••••••"
+               autocomplete="current-password" required class="{{ 'is-invalid' if errores.password }}">
+        <button class="input-action" type="button" data-password-toggle="password" aria-label="Mostrar contraseña">
+          <span data-eye-on>{{ icon('eye', 17) }}</span>
+          <span data-eye-off class="is-hidden">{{ icon('eye-off', 17) }}</span>
+        </button>
+      </div>
+      {{ error(errores, 'password') }}
+    </div>
+
+    <div class="auth-row">
+      <label class="check">
+        <input type="checkbox" name="recordar" value="1" {{ 'checked' if recordar }}>
+        <span>Mantener sesión iniciada</span>
+      </label>
+      <a class="auth-link" href="mailto:{{ soporte_email }}?subject=Recuperaci%C3%B3n%20de%20acceso%20PiedPiper">¿Olvidaste tu contraseña?</a>
+    </div>
+
+    <button class="btn btn--primary btn--block btn--lg" type="submit">
+      Entrar al panel {{ icon('arrow-right', 17) }}
+    </button>
+  </form>
+
+  {% if demo_cuentas %}
+  <details class="demo-box">
+    <summary>
+      <span>{{ icon('key', 15) }} Credenciales de demostración</span>
+      {{ icon('chevron-down', 14, 'demo-caret') }}
+    </summary>
+    <div class="demo-list">
+      {% for rol, correo, clave in demo_cuentas %}
+      <button class="demo-cred" type="button" data-demo-email="{{ correo }}" data-demo-password="{{ clave }}">
+        <span class="demo-cred-main">
+          <strong>{{ rol }}</strong>
+          <small>{{ correo }}</small>
+        </span>
+        <span class="demo-pass">{{ clave }}</span>
+        {{ icon('arrow-right', 14) }}
+      </button>
+      {% endfor %}
+    </div>
+    <p class="demo-note">Haz clic en una cuenta para completar el formulario. Desactiva <code>DEMO_MODE</code> en producción.</p>
+  </details>
+  {% endif %}
+
+  <p class="auth-foot">¿Tu empresa aún no tiene acceso? <a href="mailto:{{ soporte_email }}">Solicita una licencia</a>.</p>
+</div>
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% from 'partials/_macros.html' import icon, csrf_field, error with context %}
+{% block title %}{{ 'Editar categoría' if modo == 'editar' else 'Nueva categoría' }}{% endblock %}
+{% block page_title %}{{ 'Editar categoría' if modo == 'editar' else 'Nueva categoría' }}{% endblock %}
+{% block kicker %}Inventario · Categorías{% endblock %}
+
+{% block content %}
+<nav class="breadcrumb" aria-label="Ruta">
+  <a href="{{ url_for('categorias.index') }}">Categorías</a>
+  {{ icon('chevron-right', 13) }}
+  <span>{{ categoria.nombre if categoria else 'Nuevo registro' }}</span>
+</nav>
+
+<div class="page-head">
+  <div>
+    <h2>{{ 'Actualizar la categoría' if modo == 'editar' else 'Crear una categoría' }}</h2>
+    <p>Las categorías agrupan productos y alimentan la distribución del panel.</p>
+  </div>
+  <a class="btn btn--ghost" href="{{ url_for('categorias.index') }}">{{ icon('chevron-left', 15) }} Volver</a>
+</div>
+
+<div class="narrow-form">
+  <form method="post" action="{{ url_for('categorias.editar', categoria_id=categoria.id) if categoria else url_for('categorias.nueva') }}" novalidate>
+    {{ csrf_field() }}
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <h3>Datos de la categoría</h3>
+          <p>Nombre corto y una descripción útil para tu equipo.</p>
+        </div>
+        <span class="side-icon">{{ icon('tag', 18) }}</span>
+      </div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="field span-2">
+            <label for="nombre">Nombre <span class="req">*</span></label>
+            <input type="text" id="nombre" name="nombre" value="{{ datos.nombre }}" maxlength="80" required placeholder="Ej. Cómputo, Redes, Papelería…" class="{{ 'is-invalid' if errores.nombre }}">
+            {{ error(errores, 'nombre') }}
+          </div>
+          <div class="field span-2">
+            <label for="descripcion">Descripción</label>
+            <textarea id="descripcion" name="descripcion" rows="3" maxlength="200" placeholder="Qué productos agrupa y cómo debe usarse…">{{ datos.descripcion }}</textarea>
+          </div>
+        </div>
+
+        <div class="status-row">
+          <label class="switch">
+            <input type="checkbox" name="activo" value="1" {{ 'checked' if datos.activo }}>
+            <span class="switch-track" aria-hidden="true"></span>
+            <span class="switch-copy">
+              <strong>Categoría activa</strong>
+              <small>Las categorías inactivas se conservan, pero se marcan en los formularios.</small>
+            </span>
+          </label>
+        </div>
+      </div>
+      <div class="card-foot form-footer form-footer--card">
+        <a class="btn btn--ghost" href="{{ url_for('categorias.index') }}">Cancelar</a>
+        <button class="btn btn--primary" type="submit">{{ icon('check', 16) }} {{ 'Guardar cambios' if modo == 'editar' else 'Crear categoría' }}</button>
+      </div>
+    </section>
+  </form>
+
+  <div class="info-note">
+    {{ icon('info', 17) }}
+    <p>Para eliminar una categoría primero reasigna sus productos a otra categoría o desactívala.</p>
+  </div>
+</div>
+{% endblock %}

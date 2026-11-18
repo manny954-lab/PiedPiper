@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% from 'partials/_macros.html' import icon, csrf_field, badge, licencia_badge, progreso, empty with context %}
+{% block title %}Empresas{% endblock %}
+{% block page_title %}Empresas{% endblock %}
+{% block kicker %}Plataforma · Administración global{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Clientes de la plataforma</h2>
+    <p>Alta de empresas, licencias y contexto de operación para soporte.</p>
+  </div>
+  <a class="btn btn--primary" href="{{ url_for('empresas.nueva') }}">{{ icon('plus', 16) }} Nueva empresa</a>
+</div>
+
+<div class="stats-row stats-row--4">
+  <div class="stat-chip"><span class="stat-icon">{{ icon('building', 16) }}</span><div><strong>{{ resumen.empresas }}</strong><span>empresas</span></div></div>
+  <div class="stat-chip"><span class="stat-icon">{{ icon('check-circle', 16) }}</span><div><strong>{{ resumen.activas }}</strong><span>activas</span></div></div>
+  <div class="stat-chip"><span class="stat-icon">{{ icon('shield', 16) }}</span><div><strong>{{ resumen.vigentes }}</strong><span>licencias vigentes</span></div></div>
+  <div class="stat-chip stat-chip--success"><span class="stat-icon">{{ icon('wallet', 16) }}</span><div><strong>{{ resumen.mrr|money }}</strong><span>MRR estimado</span></div></div>
+</div>
+
+<section class="card">
+  <div class="card-head">
+    <div>
+      <h3>Directorio de empresas</h3>
+      <p>Selecciona una empresa para operar su inventario o editar su configuración.</p>
+    </div>
+    <span class="badge badge--neutral">{{ empresas|length }}</span>
+  </div>
+
+  {% if empresas %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Empresa</th>
+          <th>Licencia</th>
+          <th>Vencimiento</th>
+          <th>Usuarios</th>
+          <th>Productos</th>
+          <th>Estado</th>
+          <th class="actions-col">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in empresas %}
+        <tr class="{{ 'is-dimmed' if not e.activa }}">
+          <td>
+            <div class="company-cell">
+              <span class="company-avatar">{{ e.nombre[:1]|upper }}</span>
+              <div>
+                <div class="cell-main">{{ e.nombre }}{% if e.id == g.empresa_id %} <span class="you-tag">En uso</span>{% endif %}</div>
+                <div class="cell-sub"><span class="mono">{{ e.slug }}</span>{% if e.rfc %} · {{ e.rfc }}{% endif %}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            {% if e.plan in PLANES %}
+            <div class="cell-main">{% if e.plan == 'empresarial' %}{{ badge('Empresarial', 'accent') }}{% elif e.plan == 'profesional' %}{{ badge('Profesional', 'info') }}{% else %}{{ badge('Básico', 'neutral') }}{% endif %}</div>
+            {% endif %}
+            <div class="cell-sub">{{ licencia_badge(e.licencia_estado, e.dias) if e.licencia_estado else badge('Sin licencia', 'danger') }}</div>
+          </td>
+          <td class="nowrap">
+            <div class="cell-main">{{ e.vence|fecha if e.vence else '—' }}</div>
+            {% if e.dias is not none %}
+            <div class="cell-sub {{ 'text-danger' if e.dias < 0 else ('text-warning' if e.dias <= 30 else '') }}">{{ e.dias }} días</div>
+            {% endif %}
+          </td>
+          <td>
+            <div class="usage-cell">
+              <span class="mono">{{ e.usuarios }}/{{ e.max_usuarios or '—' }}</span>
+              {{ progreso(e.usuarios, e.max_usuarios or 1, 'danger' if e.max_usuarios and e.usuarios >= e.max_usuarios else 'accent') }}
+            </div>
+          </td>
+          <td>
+            <div class="usage-cell">
+              <span class="mono">{{ e.productos }}/{{ e.max_productos or '—' }}</span>
+              {{ progreso(e.productos, e.max_productos or 1, 'danger' if e.max_productos and e.productos >= e.max_productos else 'accent') }}
+            </div>
+          </td>
+          <td>
+            {% if e.activa %}{{ badge('Activa', 'success') }}{% else %}{{ badge('Suspendida', 'danger') }}{% endif %}
+          </td>
+          <td class="actions-col">
+            <div class="row-actions">
+              <form method="post" action="{{ url_for('empresas.contexto') }}">
+                {{ csrf_field() }}
+                <input type="hidden" name="empresa_id" value="{{ e.id }}">
+                <input type="hidden" name="volver" value="{{ url_for('dashboard.index') }}">
+                <button class="btn btn--ghost btn--xs" type="submit" title="Operar esta empresa">{{ icon('arrow-right', 14) }} Entrar</button>
+              </form>
+              {% if e.licencia_id %}
+              <a class="icon-btn icon-btn--sm" href="{{ url_for('licencias.editar', licencia_id=e.licencia_id) }}" title="Editar licencia" aria-label="Editar licencia de {{ e.nombre }}">{{ icon('key', 15) }}</a>
+              {% endif %}
+              <a class="icon-btn icon-btn--sm" href="{{ url_for('empresas.editar', empresa_id=e.id) }}" title="Editar empresa" aria-label="Editar {{ e.nombre }}">{{ icon('edit', 15) }}</a>
+              <form method="post" action="{{ url_for('empresas.cambiar_estado', empresa_id=e.id) }}">
+                {{ csrf_field() }}
+                <button class="icon-btn icon-btn--sm {{ 'is-danger' if e.activa }}" type="submit"
+                        title="{{ 'Desactivar empresa' if e.activa else 'Reactivar empresa' }}"
+                        data-confirm="{{ '¿Desactivar «' ~ e.nombre ~ '»? Sus usuarios perderán acceso.' if e.activa else '¿Reactivar «' ~ e.nombre ~ '»?' }}">
+                  {{ icon('x' if e.activa else 'check', 15) }}
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    {{ empty('building', 'Sin empresas', 'Registra el primer cliente para comenzar a vender licencias.', url_for('empresas.nueva'), 'Nueva empresa') }}
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% from 'partials/_macros.html' import icon, badge, licencia_badge, progreso, empty with context %}
+{% block title %}Mi licencia{% endblock %}
+{% block page_title %}Mi licencia{% endblock %}
+{% block kicker %}{{ g.empresa.nombre }}{% endblock %}
+
+{% block content %}
+{% set motivos = {
+  'vencida': 'La licencia venció. El acceso operativo está bloqueado hasta que se renueve.',
+  'suspendida': 'La licencia fue suspendida por el administrador de la plataforma.',
+  'empresa_inactiva': 'La empresa está desactivada en la plataforma.',
+  'sin_licencia': 'La empresa no tiene una licencia registrada.'
+} %}
+
+{% if not ok %}
+<div class="license-blocked">
+  <span class="license-blocked-icon">{{ icon('lock', 24) }}</span>
+  <div>
+    <h2>Acceso restringido</h2>
+    <p>{{ motivos.get(motivo, 'La licencia no permite operar en este momento.') }}</p>
+    <p class="muted">Contacta a <a href="mailto:{{ soporte_email }}">{{ soporte_email }}</a> para regularizar tu situación.</p>
+  </div>
+  <a class="btn btn--primary" href="mailto:{{ soporte_email }}?subject=Renovaci%C3%B3n%20de%20licencia%20PiedPiper">Contactar a soporte</a>
+</div>
+{% elif dias is not none and dias <= 15 %}
+<div class="banner banner--warning">
+  {{ icon('alert-triangle', 18) }}
+  <div><strong>Renovación próxima.</strong> Tu licencia vence en {{ dias }} días ({{ licencia.vence|fecha }}).</div>
+</div>
+{% endif %}
+
+{% if licencia %}
+<section class="license-hero">
+  <div class="license-hero-main">
+    <span class="license-eyebrow">{{ icon('credit-card', 14) }} Licencia {{ plan.nombre if plan else licencia.plan }}</span>
+    <h2>{{ plan.nombre if plan else licencia.plan|capitalize }}</h2>
+    <p>{{ plan.descripcion if plan else 'Suscripción activa de PiedPiper Inventario.' }}</p>
+    <div class="license-hero-badges">
+      {{ licencia_badge(licencia.estado, dias) }}
+      <span class="badge badge--neutral">{{ g.empresa.nombre }}</span>
+      {% if dias is not none %}
+      <span class="badge {{ 'badge--danger' if dias < 0 else ('badge--warning' if dias <= 30 else 'badge--neutral') }}">
+        {{ 'Venció hace ' ~ (-dias) ~ ' días' if dias < 0 else 'Quedan ' ~ dias ~ ' días' }}
+      </span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="license-hero-side">
+    <div class="license-key">
+      <span>Clave de licencia</span>
+      <div class="license-key-row">
+        <code>{{ licencia.clave }}</code>
+        <button class="icon-btn icon-btn--sm" type="button" data-copy="{{ licencia.clave }}" title="Copiar clave" aria-label="Copiar clave de licencia">{{ icon('copy', 15) }}</button>
+      </div>
+    </div>
+    <div class="license-dates">
+      <div><span>Inicio</span><strong>{{ licencia.inicio|fecha }}</strong></div>
+      <div><span>Vencimiento</span><strong>{{ licencia.vence|fecha }}</strong></div>
+    </div>
+  </div>
+</section>
+
+<div class="license-grid">
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h3>Consumo de la licencia</h3>
+        <p>Límites contratados y uso actual.</p>
+      </div>
+      {{ icon('activity', 20, 'card-head-icon') }}
+    </div>
+    <div class="card-body">
+      <div class="usage-block">
+        <div class="usage-head">
+          <span>{{ icon('users', 16) }} Usuarios activos</span>
+          <strong class="mono">{{ licencia.usuarios_usados }} / {{ licencia.max_usuarios }}</strong>
+        </div>
+        {{ progreso(licencia.usuarios_usados, licencia.max_usuarios, 'danger' if licencia.usuarios_usados >= licencia.max_usuarios else 'accent') }}
+        <p class="field-help">Los administradores pueden desactivar cuentas para liberar lugares.</p>
+      </div>
+      <div class="usage-block">
+        <div class="usage-head">
+          <span>{{ icon('box', 16) }} Productos registrados</span>
+          <strong class="mono">{{ licencia.productos_usados }} / {{ licencia.max_productos }}</strong>
+        </div>
+        {{ progreso(licencia.productos_usados, licencia.max_productos, 'danger' if licencia.productos_usados >= licencia.max_productos else 'accent') }}
+        <p class="field-help">Incluye productos activos e inactivos del catálogo.</p>
+      </div>
+      {% if g.user.rol == 'admin' %}
+      <div class="usage-actions">
+        <a class="btn btn--ghost btn--sm" href="{{ url_for('usuarios.index') }}">{{ icon('users', 15) }} Gestionar usuarios</a>
+        <a class="btn btn--ghost btn--sm" href="{{ url_for('productos.index') }}">{{ icon('box', 15) }} Ver catálogo</a>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h3>Incluye tu plan</h3>
+        <p>Capacidades contratadas.</p>
+      </div>
+      {{ icon('shield', 20, 'card-head-icon') }}
+    </div>
+    <div class="card-body">
+      {% if plan %}
+      <ul class="feature-list">
+        {% for f in plan.features %}
+        <li><span class="feature-check">{{ icon('check', 13) }}</span>{{ f }}</li>
+        {% endfor %}
+      </ul>
+      <div class="plan-price">{{ plan.precio }}</div>
+      {% else %}
+      <p class="muted">Consulta las condiciones de tu plan con soporte.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="card support-card">
+    <div class="side-card-head">
+      <span class="side-icon">{{ icon('mail', 18) }}</span>
+      <h3>Renovaciones y soporte</h3>
+    </div>
+    <p class="side-text">Para renovar, ampliar usuarios o productos, contacta al equipo de PiedPiper Software.</p>
+    <a class="btn btn--primary btn--sm" href="mailto:{{ soporte_email }}?subject=Licencia%20{{ licencia.clave }}">{{ icon('mail', 15) }} Escribir a soporte</a>
+    <p class="side-meta">Incluye tu clave de licencia para agilizar la atención.</p>
+  </section>
+</div>
+{% else %}
+  <div class="card empty-hero">
+    <span class="empty-icon">{{ icon('credit-card', 30) }}</span>
+    <h2>Sin licencia registrada</h2>
+    <p>Tu empresa aún no tiene una licencia activa. Contacta al administrador de la plataforma o a soporte.</p>
+    <a class="btn btn--primary" href="mailto:{{ soporte_email }}">Contactar a soporte</a>
+  </div>
+{% endif %}
+{% endblock %}
